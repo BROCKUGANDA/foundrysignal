@@ -9,6 +9,7 @@ import "./globals.css";
 import { Providers } from "@/components/fs/providers";
 import { THEME_BOOTSTRAP } from "@/components/fs/theme";
 import { SITE, SITE_URL } from "@/lib/seo";
+import { ASSET_RECOVERY_BOOTSTRAP } from "@/components/fs/asset-recovery";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -88,7 +89,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Pre-paint theme application: prevents a light/dark flash. Space
             Grotesk ships via @fontsource above (self-hosted woff2, swap), so
             no manual preload is needed and none can point at a stale path. */}
+        {/* Static, app-controlled constants — no user input reaches these scripts. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        <script dangerouslySetInnerHTML={{ __html: ASSET_RECOVERY_BOOTSTRAP }} />
       </head>
       <body className="fs-grain min-h-dvh antialiased">
         <a href="#fs-main" className="fs-skip-link">

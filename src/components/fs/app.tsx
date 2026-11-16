@@ -17,6 +17,7 @@ import { DiscoverView } from "@/components/fs/discover-view";
 import { NotFoundView } from "@/components/fs/not-found-view";
 import { BootSplash, LoadingState, OfflineState } from "@/components/fs";
 import { useWalletAvailability } from "@/lib/client/wallet";
+import { TradingView } from "@/components/fs/trading-surface-view";
 
 // Heavy views load on demand — keeps the first bundle to the shell plus the
 // two views a new session can reach (auth, discover).
@@ -221,6 +222,7 @@ function FoundrySignalRouter() {
         ) : null}
         {match.section === "watchlists" ? <WatchlistsView /> : null}
         {match.section === "markets" ? <MarketsView /> : null}
+        {match.section === "trade" ? <TradingView /> : null}
         {match.section === "settings" ? (
           <SettingsView account={account} onAccountRefresh={setAccount} />
         ) : null}
