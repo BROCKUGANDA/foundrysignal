@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100" role="img" aria-labelledby="fs-lockup-v-title">
+  <title id="fs-lockup-v-title">FoundrySignal — stacked lockup</title>
+  <!-- Stacked lockup — editable master.
+       Emblem centered above the wordmark, for square-ish placements:
+       social avatars, document covers, slide masters, print.
+
+       Emblem 44px, 12px gap, wordmark 20px centered.
+       Clear space: >= 11px on all sides.
+       Minimum height: 80px. -->
+  <g transform="translate(78 6)" color="#eaf0f5">
+    <g fill="currentColor">
+      <rect x="6" y="4" width="3.5" height="24" rx="1.4" />
+      <rect x="6" y="4" width="20.5" height="3.5" rx="1.4" />
+      <rect x="6" y="14" width="16.5" height="3.5" rx="1.4" />
+    </g>
+    <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.85">
+      <path d="M26.5 7.5 L24 19.4" />
+      <path d="M22.5 17.5 L22.9 19.4" />
+    </g>
+    <circle cx="24" cy="21.6" r="2.4" fill="#64e5cb" />
+    <circle cx="24" cy="21.6" r="4.6" fill="none" stroke="#64e5cb" stroke-width="1" opacity="0.35" />
+  </g>
+  <text x="100" y="82" text-anchor="middle"
+        font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif"
+        font-size="21" font-weight="700" letter-spacing="-0.6"
+        fill="#eaf0f5">Foundry<tspan fill="#64e5cb">Signal</tspan></text>
+</svg>

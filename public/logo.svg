@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 32" width="200" height="32" role="img" aria-labelledby="fs-lockup-h-title">
+  <title id="fs-lockup-h-title">FoundrySignal — horizontal lockup</title>
+  <!-- Horizontal lockup — editable master.
+       Emblem at 32px, 10px gap, wordmark "FoundrySignal" set in Space Grotesk
+       700 at 1.05rem with -0.03em tracking. "Signal" carries the accent.
+
+       Clear space: >= 8px on all sides (>= 0.25x emblem).
+       Minimum width: 140px (below that, use the compact lockup).
+       Mono: replace both currentColor/accent stops with a single ink. -->
+  <g color="#eaf0f5">
+    <g fill="currentColor">
+      <rect x="0" y="4" width="3.5" height="24" rx="1.4" />
+      <rect x="0" y="4" width="20.5" height="3.5" rx="1.4" />
+      <rect x="0" y="14" width="16.5" height="3.5" rx="1.4" />
+    </g>
+    <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.85">
+      <path d="M20.5 7.5 L18 19.4" />
+      <path d="M16.5 17.5 L16.9 19.4" />
+    </g>
+    <circle cx="18" cy="21.6" r="2.4" fill="#64e5cb" />
+    <circle cx="18" cy="21.6" r="4.6" fill="none" stroke="#64e5cb" stroke-width="1" opacity="0.35" />
+  </g>
+  <text x="42" y="22"
+        font-family="'Space Grotesk', ui-sans-serif, system-ui, sans-serif"
+        font-size="17" font-weight="700" letter-spacing="-0.5"
+        fill="#eaf0f5">Foundry<tspan fill="#64e5cb">Signal</tspan></text>
+</svg>

@@ -1,0 +1,334 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   FOUNDRYSIGNAL — SEMANTIC TOKEN LAYER + THEMES
+   Components consume ONLY the tokens in this file. Two independent themes
+   (`.dark`, `.light`) plus `[data-contrast="high"]` and
+   `[data-motion="reduced"]` modifiers. Every foreground/background pair
+   used for text is verified ≥ 4.5:1 (body) and ≥ 3:1 (large text / UI
+   boundaries) — see scripts/verify-token-contrast.ts.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Dark is the product default ────────────────────────────────────── */
+.dark,
+:root {
+  color-scheme: dark;
+
+  /* Surfaces, deepest → most raised */
+  --fs-bg: var(--fs-obsidian-50);
+  --fs-bg-deep: var(--fs-obsidian-0);
+  --fs-bg-sunken: var(--fs-obsidian-0);
+  --fs-surface: var(--fs-obsidian-100);
+  --fs-surface-2: var(--fs-obsidian-200);
+  --fs-surface-3: var(--fs-obsidian-300);
+  --fs-surface-4: var(--fs-obsidian-400);
+  --fs-surface-inverse: var(--fs-porcelain-100);
+  --fs-surface-glass: rgba(13, 19, 29, 0.72);
+  --fs-surface-overlay: rgba(5, 7, 12, 0.72);
+  --fs-scrim: rgba(3, 5, 9, 0.62);
+
+  /* Text */
+  --fs-text: var(--fs-obsidian-950);
+  --fs-text-secondary: var(--fs-obsidian-900);
+  --fs-text-muted: var(--fs-obsidian-800);
+  --fs-text-faint: var(--fs-obsidian-700);
+  --fs-text-on-accent: var(--fs-mint-950);
+  --fs-text-inverse: var(--fs-obsidian-950);
+  --fs-text-disabled: color-mix(in srgb, var(--fs-obsidian-800) 55%, transparent);
+
+  /* Borders */
+  --fs-border: rgba(120, 153, 255, 0.13);
+  --fs-border-subtle: rgba(120, 153, 255, 0.08);
+  --fs-border-strong: rgba(120, 153, 255, 0.26);
+  --fs-border-emphasis: rgba(120, 153, 255, 0.42);
+  --fs-border-inverse: rgba(234, 240, 245, 0.22);
+
+  /* Accent (mint) */
+  --fs-accent: var(--fs-mint-400);
+  --fs-accent-hover: var(--fs-mint-300);
+  --fs-accent-active: var(--fs-mint-200);
+  --fs-accent-subtle: color-mix(in srgb, var(--fs-mint-400) 12%, transparent);
+  --fs-accent-muted: color-mix(in srgb, var(--fs-mint-400) 22%, transparent);
+  --fs-accent-border: color-mix(in srgb, var(--fs-mint-400) 40%, transparent);
+  --fs-accent-fg: var(--fs-mint-400);
+  --fs-accent-contrast: var(--fs-mint-950);
+
+  /* Secondary (electric blue) */
+  --fs-accent-2: var(--fs-blue-400);
+  --fs-accent-2-hover: var(--fs-blue-300);
+  --fs-accent-2-subtle: color-mix(in srgb, var(--fs-blue-400) 12%, transparent);
+  --fs-accent-2-border: color-mix(in srgb, var(--fs-blue-400) 40%, transparent);
+  --fs-accent-2-contrast: var(--fs-blue-950);
+
+  /* Semantic state colors */
+  --fs-success: var(--fs-mint-400);
+  --fs-success-fg: var(--fs-mint-300);
+  --fs-success-bg: color-mix(in srgb, var(--fs-mint-400) 11%, transparent);
+  --fs-success-border: color-mix(in srgb, var(--fs-mint-400) 34%, transparent);
+
+  --fs-warning: var(--fs-amber-300);
+  --fs-warning-fg: var(--fs-amber-300);
+  --fs-warning-bg: color-mix(in srgb, var(--fs-amber-300) 11%, transparent);
+  --fs-warning-border: color-mix(in srgb, var(--fs-amber-300) 34%, transparent);
+
+  --fs-danger: var(--fs-coral-300);
+  --fs-danger-fg: var(--fs-coral-300);
+  --fs-danger-bg: color-mix(in srgb, var(--fs-coral-300) 11%, transparent);
+  --fs-danger-border: color-mix(in srgb, var(--fs-coral-300) 34%, transparent);
+
+  --fs-info: var(--fs-blue-400);
+  --fs-info-fg: var(--fs-blue-300);
+  --fs-info-bg: color-mix(in srgb, var(--fs-blue-400) 11%, transparent);
+  --fs-info-border: color-mix(in srgb, var(--fs-blue-400) 34%, transparent);
+
+  --fs-positive: var(--fs-green-300);
+  --fs-positive-fg: var(--fs-green-300);
+  --fs-positive-bg: color-mix(in srgb, var(--fs-green-300) 11%, transparent);
+  --fs-positive-border: color-mix(in srgb, var(--fs-green-300) 34%, transparent);
+
+  --fs-neutral: var(--fs-obsidian-800);
+  --fs-neutral-fg: var(--fs-obsidian-900);
+  --fs-neutral-bg: color-mix(in srgb, var(--fs-obsidian-800) 12%, transparent);
+  --fs-neutral-border: var(--fs-border);
+
+  /* Legacy aliases kept for one release; components must not use them. */
+  --fs-amber: var(--fs-amber-300);
+  --fs-coral: var(--fs-coral-300);
+
+  /* Status aliases (used by chips/badges) */
+  --fs-status-ok: var(--fs-mint-400);
+  --fs-status-warn: var(--fs-amber-300);
+  --fs-status-error: var(--fs-coral-300);
+  --fs-status-info: var(--fs-blue-400);
+  --fs-status-neutral: var(--fs-obsidian-800);
+
+  /* Focus */
+  --fs-focus-ring: var(--fs-mint-400);
+  --fs-focus-ring-offset-color: var(--fs-bg);
+  --fs-focus-halo: color-mix(in srgb, var(--fs-mint-400) 26%, transparent);
+
+  /* Disabled */
+  --fs-disabled-bg: color-mix(in srgb, var(--fs-obsidian-800) 10%, transparent);
+  --fs-disabled-fg: color-mix(in srgb, var(--fs-obsidian-800) 50%, transparent);
+  --fs-disabled-border: var(--fs-border-subtle);
+
+  /* Data visualization series — distinguishable in both themes */
+  --fs-chart-1: var(--fs-mint-400);
+  --fs-chart-2: var(--fs-blue-400);
+  --fs-chart-3: var(--fs-amber-300);
+  --fs-chart-4: var(--fs-coral-300);
+  --fs-chart-5: var(--fs-green-300);
+  --fs-chart-6: var(--fs-violet-200);
+  --fs-chart-grid: rgba(120, 153, 255, 0.12);
+  --fs-chart-axis: var(--fs-text-faint);
+  --fs-chart-tooltip-bg: var(--fs-obsidian-300);
+
+  /* Elevation (shadow recipes, theme-tuned) */
+  --fs-elevation-0: none;
+  --fs-elevation-1: var(--fs-shadow-xs);
+  --fs-elevation-2: var(--fs-shadow-md);
+  --fs-elevation-3: var(--fs-shadow-lg);
+  --fs-elevation-4: var(--fs-shadow-xl);
+  --fs-elevation-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --fs-scrim-blur: blur(14px);
+
+  /* Ambient texture */
+  --fs-grain-opacity: 0.028;
+  --fs-grid-line: rgba(120, 153, 255, 0.055);
+  --fs-shimmer-base: var(--fs-obsidian-200);
+  --fs-shimmer-highlight: rgba(140, 175, 235, 0.1);
+  --fs-scan-gradient: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--fs-mint-400) 9%, transparent),
+    transparent
+  );
+}
+
+/* ── Light theme ────────────────────────────────────────────────────── */
+.light {
+  color-scheme: light;
+
+  --fs-bg: var(--fs-porcelain-100);
+  --fs-bg-deep: var(--fs-porcelain-200);
+  --fs-bg-sunken: var(--fs-porcelain-200);
+  --fs-surface: #ffffff;
+  --fs-surface-2: var(--fs-porcelain-50);
+  --fs-surface-3: var(--fs-porcelain-200);
+  --fs-surface-4: var(--fs-porcelain-300);
+  --fs-surface-inverse: var(--fs-obsidian-200);
+  --fs-surface-glass: rgba(255, 255, 255, 0.78);
+  --fs-surface-overlay: rgba(248, 250, 252, 0.8);
+  --fs-scrim: rgba(11, 18, 32, 0.42);
+
+  --fs-text: var(--fs-porcelain-900);
+  --fs-text-secondary: var(--fs-porcelain-800);
+  --fs-text-muted: var(--fs-porcelain-700);
+  /* porcelain-600 (#8593a5) only reaches 2.86:1 on the tinted bg — one step
+     darker keeps small meta text above 3:1 on every light surface. */
+  --fs-text-faint: #6e7b8d;
+  --fs-text-on-accent: #ffffff;
+  --fs-text-inverse: #ffffff;
+  --fs-text-disabled: color-mix(in srgb, var(--fs-porcelain-700) 52%, transparent);
+
+  --fs-border: rgba(17, 24, 35, 0.11);
+  --fs-border-subtle: rgba(17, 24, 35, 0.07);
+  --fs-border-strong: rgba(17, 24, 35, 0.2);
+  --fs-border-emphasis: rgba(17, 24, 35, 0.34);
+  --fs-border-inverse: rgba(234, 240, 245, 0.26);
+
+  /* mint-700 (#158270) is 4.31:1 on the tinted bg; mint-800 clears 4.5:1
+     against bg, surface, and white-on-accent in one step. */
+  --fs-accent: var(--fs-mint-800);
+  --fs-accent-hover: var(--fs-mint-800);
+  --fs-accent-active: var(--fs-mint-900);
+  --fs-accent-subtle: color-mix(in srgb, var(--fs-mint-600) 9%, transparent);
+  --fs-accent-muted: color-mix(in srgb, var(--fs-mint-600) 16%, transparent);
+  --fs-accent-border: color-mix(in srgb, var(--fs-mint-600) 38%, transparent);
+  --fs-accent-fg: var(--fs-mint-700);
+  --fs-accent-contrast: #ffffff;
+
+  --fs-accent-2: var(--fs-blue-600);
+  --fs-accent-2-hover: var(--fs-blue-700);
+  --fs-accent-2-subtle: color-mix(in srgb, var(--fs-blue-600) 9%, transparent);
+  --fs-accent-2-border: color-mix(in srgb, var(--fs-blue-600) 36%, transparent);
+  --fs-accent-2-contrast: #ffffff;
+
+  --fs-success: var(--fs-mint-700);
+  --fs-success-fg: var(--fs-mint-800);
+  --fs-success-bg: color-mix(in srgb, var(--fs-mint-600) 10%, transparent);
+  --fs-success-border: color-mix(in srgb, var(--fs-mint-600) 36%, transparent);
+
+  --fs-warning: var(--fs-amber-700);
+  --fs-warning-fg: var(--fs-amber-700);
+  --fs-warning-bg: color-mix(in srgb, var(--fs-amber-500) 12%, transparent);
+  --fs-warning-border: color-mix(in srgb, var(--fs-amber-600) 38%, transparent);
+
+  --fs-danger: var(--fs-coral-600);
+  --fs-danger-fg: var(--fs-coral-700);
+  --fs-danger-bg: color-mix(in srgb, var(--fs-coral-500) 10%, transparent);
+  --fs-danger-border: color-mix(in srgb, var(--fs-coral-500) 36%, transparent);
+
+  --fs-info: var(--fs-blue-600);
+  --fs-info-fg: var(--fs-blue-700);
+  --fs-info-bg: color-mix(in srgb, var(--fs-blue-500) 9%, transparent);
+  --fs-info-border: color-mix(in srgb, var(--fs-blue-500) 34%, transparent);
+
+  --fs-positive: var(--fs-green-600);
+  --fs-positive-fg: var(--fs-green-700);
+  --fs-positive-bg: color-mix(in srgb, var(--fs-green-500) 10%, transparent);
+  --fs-positive-border: color-mix(in srgb, var(--fs-green-500) 34%, transparent);
+
+  --fs-neutral: var(--fs-porcelain-700);
+  --fs-neutral-fg: var(--fs-porcelain-800);
+  --fs-neutral-bg: color-mix(in srgb, var(--fs-porcelain-700) 8%, transparent);
+  --fs-neutral-border: var(--fs-border);
+
+  --fs-amber: var(--fs-amber-700);
+  --fs-coral: var(--fs-coral-600);
+
+  --fs-status-ok: var(--fs-mint-700);
+  --fs-status-warn: var(--fs-amber-700);
+  --fs-status-error: var(--fs-coral-600);
+  --fs-status-info: var(--fs-blue-600);
+  --fs-status-neutral: var(--fs-porcelain-700);
+
+  --fs-focus-ring: var(--fs-mint-700);
+  --fs-focus-ring-offset-color: #ffffff;
+  --fs-focus-halo: color-mix(in srgb, var(--fs-mint-600) 22%, transparent);
+
+  --fs-disabled-bg: color-mix(in srgb, var(--fs-porcelain-700) 8%, transparent);
+  --fs-disabled-fg: color-mix(in srgb, var(--fs-porcelain-700) 50%, transparent);
+  --fs-disabled-border: var(--fs-border-subtle);
+
+  --fs-chart-1: var(--fs-mint-700);
+  --fs-chart-2: var(--fs-blue-600);
+  --fs-chart-3: var(--fs-amber-600);
+  --fs-chart-4: var(--fs-coral-600);
+  --fs-chart-5: var(--fs-green-600);
+  --fs-chart-6: var(--fs-violet-600);
+  --fs-chart-grid: rgba(17, 24, 35, 0.1);
+  --fs-chart-axis: var(--fs-text-faint);
+  --fs-chart-tooltip-bg: #ffffff;
+
+  --fs-elevation-0: none;
+  --fs-elevation-1: 0 1px 2px rgba(17, 24, 35, 0.07);
+  --fs-elevation-2: 0 4px 12px rgba(17, 24, 35, 0.09), 0 1px 3px rgba(17, 24, 35, 0.06);
+  --fs-elevation-3: 0 12px 28px rgba(17, 24, 35, 0.11), 0 3px 8px rgba(17, 24, 35, 0.06);
+  --fs-elevation-4: 0 24px 56px rgba(17, 24, 35, 0.14), 0 8px 18px rgba(17, 24, 35, 0.07);
+  --fs-elevation-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --fs-scrim-blur: blur(10px);
+
+  --fs-grain-opacity: 0.016;
+  --fs-grid-line: rgba(17, 24, 35, 0.05);
+  --fs-shimmer-base: var(--fs-porcelain-200);
+  --fs-shimmer-highlight: rgba(255, 255, 255, 0.9);
+  --fs-scan-gradient: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--fs-mint-600) 8%, transparent),
+    transparent
+  );
+}
+
+/* ── High-contrast preference ───────────────────────────────────────── */
+[data-contrast="high"] {
+  --fs-border: var(--fs-border-strong);
+  --fs-border-subtle: var(--fs-border);
+  --fs-border-strong: var(--fs-border-emphasis);
+  --fs-border-emphasis: currentColor;
+  --fs-text-muted: var(--fs-text-secondary);
+  --fs-text-faint: var(--fs-text-muted);
+  --fs-chart-grid: var(--fs-border-strong);
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --fs-border-subtle: var(--fs-border);
+    --fs-text-faint: var(--fs-text-muted);
+  }
+}
+
+/* ── Forced colors / Windows High Contrast ──────────────────────────── */
+@media (forced-colors: active) {
+  .fs-panel,
+  .fs-card,
+  .fs-chip,
+  .fs-btn,
+  .fs-input {
+    border: 1px solid CanvasText;
+  }
+  .fs-skeleton {
+    background: GrayText;
+    animation: none;
+  }
+  .fs-live-dot,
+  .fs-chip::before {
+    forced-color-adjust: none;
+  }
+}
+
+/* ── Print ──────────────────────────────────────────────────────────── */
+@media print {
+  .dark,
+  :root {
+    --fs-bg: #ffffff;
+    --fs-bg-deep: #ffffff;
+    --fs-surface: #ffffff;
+    --fs-surface-2: #ffffff;
+    --fs-surface-3: #ffffff;
+    --fs-text: #000000;
+    --fs-text-secondary: #1a1a1a;
+    --fs-text-muted: #333333;
+    --fs-text-faint: #444444;
+    --fs-border: rgba(0, 0, 0, 0.24);
+    --fs-border-strong: rgba(0, 0, 0, 0.5);
+    --fs-grain-opacity: 0;
+    --fs-elevation-0: none;
+    --fs-elevation-1: none;
+    --fs-elevation-2: none;
+    --fs-elevation-3: none;
+    --fs-elevation-4: none;
+  }
+  .fs-no-print {
+    display: none !important;
+  }
+}

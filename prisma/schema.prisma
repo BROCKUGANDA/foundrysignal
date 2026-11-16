@@ -1,0 +1,752 @@
+// FoundrySignal domain schema — Prisma 6
+// Written PostgreSQL-portable: no SQLite-only constructs; enums modeled as
+// string unions validated in application layer (lib/contracts/enums.ts).
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Identity & access ────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  emailHash    String    @unique // sha256(lowercased email) for stable lookup
+  name         String?
+  passwordHash String
+  platformRole String    @default("USER") // USER | MODERATOR | PLATFORM_ADMIN
+  userType     String    @default("VENTURE_INVESTOR") // registration persona; never implies a role
+  emailVerifiedAt        DateTime?
+  status       String    @default("ACTIVE") // ACTIVE | DELETED
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  sessions     Session[]
+  memberships  Membership[]
+  auditEvents  AuditEvent[]
+  reports      ResearchReport[]
+  apiKeys      ApiKey[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique // sha256 of opaque token
+  activeWsId   String?
+  expiresAt    DateTime
+  lastSeenAt   DateTime @default(now())
+  revokedAt    DateTime?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  kind      String   @default("PERSONAL") // PERSONAL | TEAM
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships    Membership[]
+  watchlists     Watchlist[]
+  savedSearches  SavedSearch[]
+  alerts         Alert[]
+  researchRuns   ResearchRun[]
+  disputes       DisputeRecord[]
+  notes          WorkspaceNote[]
+}
+
+model Membership {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String   @default("ANALYST") // OWNER | ADMIN | ANALYST | VIEWER
+  createdAt   DateTime @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String // AUTH_LOGIN | AUTH_REGISTER | VENTURE_CREATE | EVIDENCE_CORRECT | ADMIN_ACTION | ...
+  targetType String?
+  targetId   String?
+  summary    String
+  metadata   String? // JSON string
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id])
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+// ─── Venture registry ─────────────────────────────────────────────────
+
+model Venture {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  tagline     String?
+  description String?
+  category    String    @default("OTHER") // DEFInfra | DEVTOOLS | PAYMENTS | DEFI | CONSUMER | GAMING | RWA | OTHER
+  ecosystem   String    @default("SOLANA")
+  status      String    @default("ACTIVE") // ACTIVE | MERGED | DEFUNCT | UNKNOWN
+  website     String?
+  // Normalized website identity (registerable domain). Unique guard so the same
+  // site can never fragment the evidence graph across duplicate ventures.
+  // Nullable: ventures without a website are not deduped by domain.
+  websiteKey  String?   @unique
+  logoUrl     String?
+  visibility  String    @default("PUBLIC") // PUBLIC | WORKSPACE
+  source      String    @default("USER_SUBMITTED") // USER_SUBMITTED | ADMIN_ENTRY | ISSUER_RESPONSE
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  identities      VentureIdentity[]
+  founderLinks    VentureFounderLink[]
+  repositories    Repository[]
+  products        ProductRecord[]
+  tokenAssets     TokenAsset[]
+  walletAssoc     WalletAssociation[]
+  claims          Claim[]
+  evidence        EvidenceSource[]
+  watchlistItems  WatchlistItem[]
+  onchainObs      OnchainObservation[]
+  marketSnapshots MarketSnapshot[]
+  researchRuns    ResearchRun[]
+  disputes        DisputeRecord[]
+  alerts          Alert[]
+  historyEvents   VentureHistoryEvent[]
+  workspaceNotes  WorkspaceNote[]
+}
+
+model VentureIdentity {
+  id           String   @id @default(cuid())
+  ventureId    String
+  identityType String // GITHUB_ORG | GITHUB_REPO | WEBSITE | X | DISCORD | TELEGRAM
+  externalId   String // org login / domain / handle
+  url          String?
+  confidence   String   @default("SELF_ASSERTED") // SELF_ASSERTED | SOURCE_CONFIRMED | INDEPENDENTLY_CORROBORATED | DISPUTED | UNKNOWN
+  evidenceId   String?
+  createdAt    DateTime @default(now())
+  venture      Venture  @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+
+  @@unique([ventureId, identityType, externalId])
+  @@index([identityType, externalId])
+}
+
+model VentureHistoryEvent {
+  id          String   @id @default(cuid())
+  ventureId   String
+  kind        String // CREATED | IDENTITY_LINKED | REPO_ASSOCIATED | TOKEN_ASSOCIATED | STATUS_CHANGED | EVIDENCE_CLASSIFIED | DISPUTE_RAISED | OBSERVATION_REFRESHED
+  summary     String
+  metadata    String?
+  observedAt  DateTime @default(now())
+  venture     Venture  @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+
+  @@index([ventureId, observedAt])
+}
+
+// ─── Founder intelligence ─────────────────────────────────────────────
+
+model Founder {
+  id         String   @id @default(cuid())
+  displayName String
+  slug       String   @unique
+  bio        String?
+  status     String   @default("ACTIVE")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  identityLinks IdentityLink[]
+  ventureLinks  VentureFounderLink[]
+  passportEvents FounderPassportEvent[]
+}
+
+model IdentityLink {
+  id           String   @id @default(cuid())
+  founderId    String
+  identityType String // GITHUB | X | WEBSITE | LINKEDIN | WALLET
+  externalId   String
+  url          String?
+  claimedBy    String // PLATFORM_COLLECTION | FOUNDER_PROVIDED | USER_SUBMITTED
+  confidence   String   @default("SELF_ASSERTED") // SELF_ASSERTED | SOURCE_CONFIRMED | INDEPENDENTLY_CORROBORATED | DISPUTED | UNKNOWN
+  evidenceId   String?
+  createdAt    DateTime @default(now())
+  founder      Founder  @relation(fields: [founderId], references: [id], onDelete: Cascade)
+
+  @@unique([founderId, identityType, externalId])
+}
+
+model VentureFounderLink {
+  id        String   @id @default(cuid())
+  ventureId String
+  founderId String
+  role      String   @default("FOUNDER") // FOUNDER | CO_FOUNDER | CORE_CONTRIBUTOR | ADVISOR
+  attribution String @default("SELF_ASSERTED") // SELF_ASSERTED | SOURCE_CONFIRMED | INDEPENDENTLY_CORROBORATED | DISPUTED | UNKNOWN
+  evidenceId String?
+  createdAt DateTime @default(now())
+  venture   Venture  @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+  founder   Founder  @relation(fields: [founderId], references: [id], onDelete: Cascade)
+
+  @@unique([ventureId, founderId, role])
+  @@index([founderId])
+}
+
+model FounderPassportEvent {
+  id          String   @id @default(cuid())
+  founderId   String
+  kind        String // PROJECT_SHIPPED | RELEASE | REPO_CREATED | AFFILIATION | MILESTONE
+  summary     String
+  sourceUrl   String?
+  evidenceId  String?
+  occurredAt  DateTime?
+  createdAt   DateTime @default(now())
+  founder     Founder  @relation(fields: [founderId], references: [id], onDelete: Cascade)
+
+  @@index([founderId, occurredAt])
+}
+
+// ─── Repository intelligence ──────────────────────────────────────────
+
+model Repository {
+  id           String   @id @default(cuid())
+  ventureId    String
+  provider     String   @default("GITHUB")
+  providerId   String // stable node id
+  owner        String
+  name         String
+  url          String
+  isPrivate    Boolean  @default(false)
+  association  String   @default("ASSOCIATED") // OFFICIAL | ASSOCIATED | DISPUTED
+  associationEvidenceId String?
+  createdAt    DateTime @default(now())
+  venture      Venture  @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+
+  observations RepositoryObservation[]
+  contributors ContributorObservation[]
+  releases     ReleaseObservation[]
+  commitSamples CommitSample[]
+
+  @@unique([provider, providerId])
+  @@index([ventureId])
+}
+
+model RepositoryObservation {
+  id            String   @id @default(cuid())
+  repositoryId  String
+  stars         Int
+  forks         Int
+  openIssues    Int
+  pushedAt      DateTime?
+  defaultBranch String?
+  primaryLanguage String?
+  languagesJson String? // JSON
+  description   String?
+  archived      Boolean  @default(false)
+  providerVersion String
+  collectedAt   DateTime @default(now())
+  repository    Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId, collectedAt])
+}
+
+model ContributorObservation {
+  id            String   @id @default(cuid())
+  repositoryId  String
+  providerUserId String
+  login         String
+  accountType   String // USER | BOT
+  repoRole      String // REPO_OWNER | REPO_MAINTAINER | INDIVIDUAL_CONTRIBUTOR
+  contributions Int
+  collectedAt   DateTime @default(now())
+  repository    Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId, collectedAt])
+  @@index([login])
+}
+
+model ReleaseObservation {
+  id           String   @id @default(cuid())
+  repositoryId String
+  providerId   String
+  tagName      String
+  name         String?
+  publishedAt  DateTime?
+  prerelease   Boolean  @default(false)
+  url          String?
+  collectedAt  DateTime @default(now())
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, providerId])
+  @@index([repositoryId, publishedAt])
+}
+
+model CommitSample {
+  id            String   @id @default(cuid())
+  repositoryId  String
+  sha           String
+  authorLogin   String?
+  message       String
+  committedAt   DateTime?
+  additions     Int?
+  deletions     Int?
+  collectedAt   DateTime @default(now())
+  repository    Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId, committedAt])
+}
+
+// ─── Product intelligence ─────────────────────────────────────────────
+
+model ProductRecord {
+  id          String   @id @default(cuid())
+  ventureId   String
+  name        String
+  url         String?
+  kind        String   @default("WEB") // WEB | APP | API | DOCS
+  status      String   @default("UNKNOWN") // LIVE | DOWN | BLOCKED | UNKNOWN
+  lastCheckedAt DateTime?
+  createdAt   DateTime @default(now())
+  venture     Venture  @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+
+  @@unique([ventureId, name])
+  @@index([ventureId])
+}
+
+// ─── Evidence engine ──────────────────────────────────────────────────
+
+model Claim {
+  id         String   @id @default(cuid())
+  ventureId  String?
+  subjectType String // VENTURE | FOUNDER | TOKEN | PRODUCT
+  subjectId  String?
+  statement  String
+  category   String   @default("GENERAL") // IDENTITY | PRODUCT | GROWTH | TECH | TOKENOMICS | GENERAL
+  status     String   @default("UNVERIFIED") // SUPPORTED | CONTRADICTED | OUTDATED | UNVERIFIED
+  origin     String   @default("SELF_ASSERTED") // SELF_ASSERTED | FOUNDER_PROVIDED | PLATFORM_DERIVED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  venture    Venture? @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+
+  evidenceLinks ClaimEvidenceLink[]
+
+  @@index([ventureId, status])
+}
+
+model EvidenceSource {
+  id            String   @id @default(cuid())
+  ventureId     String?
+  claimId       String?
+  entityType    String // VENTURE | FOUNDER | REPOSITORY | TOKEN | PRODUCT
+  entityId      String?
+  url           String?
+  provider      String // GITHUB_API | WEBSITE | ONCHAIN_RPC | MARKET_API | FOUNDER_PROVIDED | USER_SUBMITTED
+  sourceType    String
+  title         String?
+  contentHash   String? // sha256 of snapshot payload
+  collectorVersion String
+  transformationVersion String @default("1")
+  collectedAt   DateTime @default(now())
+  observationTime DateTime?
+  verification  String   @default("UNKNOWN") // INDEPENDENTLY_CORROBORATED | SOURCE_CONFIRMED | SELF_ASSERTED | FOUNDER_PROVIDED | DISPUTED | STALE | UNKNOWN
+  explanation   String?
+  reviewRef     String?
+  snapshots     EvidenceSnapshot[]
+  claimLinks    ClaimEvidenceLink[]
+  venture       Venture? @relation(fields: [ventureId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([ventureId, verification])
+  @@index([contentHash])
+}
+
+model EvidenceSnapshot {
+  id          String   @id @default(cuid())
+  sourceId    String
+  payload     String // JSON snapshot content
+  contentHash String
+  sizeBytes   Int
+  fetchedAt   DateTime @default(now())
+  source      EvidenceSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, fetchedAt])
+  @@index([contentHash])
+}
+
+model ClaimEvidenceLink {
+  id        String @id @default(cuid())
+  claimId   String
+  evidenceId String
+  relation  String // SUPPORTS | CONTRADICTS | NEUTRAL
+  claim     Claim          @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  evidence  EvidenceSource @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  @@unique([claimId, evidenceId, relation])
+}
+
+model DisputeRecord {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  ventureId   String?
+  targetEvidenceId String?
+  claimId     String?
+  raisedById  String?
+  kind        String // DISPUTE | CORRECTION | FOUNDER_RESPONSE
+  statement   String
+  resolution  String   @default("OPEN") // OPEN | UPHELD | RESOLVED | REJECTED
+  resolutionNote String?
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+  venture     Venture?   @relation(fields: [ventureId], references: [id])
+}
+
+// ─── Onchain & market ─────────────────────────────────────────────────
+
+model TokenAsset {
+  id          String   @id @default(cuid())
+  ventureId   String
+  mint        String   @unique
+  symbol      String?
+  name        String?
+  decimals    Int?
+  mintAuthority  String?
+  freezeAuthority String?
+  supply      String?
+  extensionsJson String?
+  association String   @default("UNKNOWN") // ESTABLISHED | CLAIMED | UNKNOWN | DISPUTED
+  associationEvidenceId String?
+  createdAt   DateTime @default(now())
+  venture     Venture  @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+
+  observations OnchainObservation[]
+  marketSnapshots MarketSnapshot[]
+}
+
+model WalletAssociation {
+  id          String   @id @default(cuid())
+  ventureId   String
+  address     String
+  label       String // TREASURY | TEAM | PROGRAM | UNKNOWN
+  confidence  String   @default("UNKNOWN") // SOURCE_CONFIRMED | SELF_ASSERTED | UNKNOWN
+  evidenceId  String?
+  createdAt   DateTime @default(now())
+  venture     Venture  @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+
+  @@unique([ventureId, address, label])
+}
+
+model OnchainObservation {
+  id            String   @id @default(cuid())
+  ventureId     String
+  tokenAssetId  String?
+  kind          String // MINT_METADATA | AUTHORITY | SUPPLY | LARGEST_ACCOUNTS | PROGRAM_ACTIVITY
+  payload       String // JSON
+  slot          BigInt?
+  dataSources   String // JSON array of source identifiers
+  observationTime DateTime @default(now())
+  providerLimitations String?
+  venture       Venture    @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+  tokenAsset    TokenAsset? @relation(fields: [tokenAssetId], references: [id])
+
+  @@index([ventureId, observationTime])
+  @@index([tokenAssetId])
+}
+
+model MarketSnapshot {
+  id           String   @id @default(cuid())
+  ventureId    String
+  tokenAssetId String?
+  priceUsd     Float?
+  liquidityUsd Float?
+  volume24hUsd Float?
+  priceChange24h Float?
+  provider     String   @default("JUPITER_PRICE_V3")
+  asOf         DateTime @default(now())
+  venture      Venture    @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+  tokenAsset   TokenAsset? @relation(fields: [tokenAssetId], references: [id])
+
+  @@index([ventureId, asOf])
+}
+
+// ─── AI research ──────────────────────────────────────────────────────
+
+model ResearchRun {
+  id          String   @id @default(cuid())
+  workspaceId String
+  ventureId   String
+  userId      String?
+  question    String
+  status      String   @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED
+  failureReason String?
+  tokensIn    Int?
+  tokensOut   Int?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  venture     Venture   @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+  report      ResearchReport?
+}
+
+model ResearchReport {
+  id          String   @id @default(cuid())
+  runId       String   @unique
+  workspaceId String
+  ventureId   String
+  title       String
+  sectionsJson String // JSON: ordered sections with citations
+  citationsJson String // JSON: citation id -> evidenceSourceId mapping
+  validationStatus String @default("PENDING") // PENDING | VALID | VALIDATION_FAILED
+  validationIssues String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  run         ResearchRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [createdById], references: [id])
+}
+
+// ─── Engagement & commerce ────────────────────────────────────────────
+
+model Watchlist {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  createdAt   DateTime @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  items       WatchlistItem[]
+
+  @@index([workspaceId])
+}
+
+model WatchlistItem {
+  id          String   @id @default(cuid())
+  watchlistId String
+  ventureId   String
+  note        String?
+  createdAt   DateTime @default(now())
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  venture     Venture   @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+
+  @@unique([watchlistId, ventureId])
+}
+
+model SavedSearch {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  queryJson   String
+  createdAt   DateTime @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model WorkspaceNote {
+  id          String   @id @default(cuid())
+  workspaceId String
+  ventureId   String
+  body        String
+  createdAt   DateTime @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  venture     Venture   @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, ventureId])
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  workspaceId String
+  ventureId   String
+  kind        String // RELEASE_PUBLISHED | AUTHORITY_CHANGED | EVIDENCE_CONTRADICTED | REPO_ACTIVITY | MARKET_MOVE
+  thresholdJson String?
+  channels    String   @default("IN_APP")
+  active      Boolean  @default(true)
+  lastEvaluatedAt DateTime?
+  createdAt   DateTime @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  venture     Venture   @relation(fields: [ventureId], references: [id], onDelete: Cascade)
+  events      AlertEvent[]
+
+  @@index([workspaceId, ventureId])
+}
+
+model AlertEvent {
+  id        String   @id @default(cuid())
+  alertId   String
+  summary   String
+  payloadJson String?
+  createdAt DateTime @default(now())
+  alert     Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  readAt    DateTime?
+
+  @@index([alertId, createdAt])
+}
+
+model TransactionRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  kind        String   @default("QUOTE_PREVIEW") // QUOTE_PREVIEW | SWAP
+  status      String   @default("PENDING") // PENDING | QUOTED | SIGNED | SUBMITTED | UNCERTAIN | CONFIRMED | FAILED | EXPIRED | REJECTED
+  inputMint   String?
+  outputMint  String?
+  inAmount    String?
+  outAmount   String?
+  slippageBps Int?
+  priceImpactPct Float?
+  quoteId     String?
+  quoteExpiresAt DateTime?
+  signature   String?
+  failureReason String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model Plan {
+  id          String @id @default(cuid())
+  code        String @unique // EXPLORER | RESEARCHER | PROFESSIONAL | TEAM | ENTERPRISE
+  name        String
+  monthlyPriceMicros Int // price as integer micros; configurable data, never hardcoded into entitlement logic
+  currency    String @default("USD")
+  entitlementsJson String // JSON: limits per capability
+  active      Boolean @default(true)
+  sort        Int @default(0)
+}
+
+model Subscription {
+  id          String   @id @default(cuid())
+  workspaceId String
+  planId      String
+  status      String   @default("TRIALING") // TRIALING | ACTIVE | PAST_DUE | CANCELED
+  provider    String   @default("none")   // none | stripe (billing provider of record)
+  providerRef String?                     // provider subscription/session id (idempotency)
+  currentPeriodEnd DateTime?
+  cancelAtPeriodEnd Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([provider, providerRef])
+  @@index([workspaceId])
+}
+
+// Billing provider webhook idempotency ledger — every processed event id is
+// recorded; replays are acknowledged without double-applying entitlements.
+model BillingWebhookEvent {
+  id          String   @id @default(cuid())
+  eventId     String   @unique // provider event id (evt_...)
+  type        String
+  payloadJson String
+  status      String   @default("PROCESSED") // PROCESSED | SKIPPED | FAILED
+  error       String?
+  createdAt   DateTime @default(now())
+}
+
+// USDC checkout intent — the onchain payment a workspace is trying to settle.
+// The memo binds an onchain transfer to this row; confirmation reads the chain.
+model CryptoPaymentIntent {
+  id             String    @id @default(cuid())
+  workspaceId    String
+  userId         String
+  planCode       String
+  amountBaseUnits Int       // USDC base units (6 dp); equals USD micros for a 1:1 stablecoin
+  mint           String
+  destination    String
+  memo           String    @unique
+  status         String    @default("PENDING") // PENDING | CONFIRMED | EXPIRED
+  provider       String    @default("usdc")
+  providerRef    String?   // confirming transaction signature
+  expiresAt      DateTime
+  confirmedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([workspaceId, status])
+  @@index([destination, status])
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  prefix      String
+  keyHash     String   @unique
+  scopes      String   @default("read:ventures")
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+
+  usage       ApiUsage[]
+}
+
+model ApiUsage {
+  id        String   @id @default(cuid())
+  apiKeyId  String
+  endpoint  String
+  createdAt DateTime @default(now())
+  apiKey    ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId, createdAt])
+}
+
+// ─── Jobs ─────────────────────────────────────────────────────────────
+
+model JobRecord {
+  id             String   @id @default(cuid())
+  queue          String   @default("default")
+  kind           String
+  idempotencyKey String   @unique
+  payloadJson    String
+  status         String   @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED | DEAD
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(5)
+  runAt          DateTime @default(now())
+  leasedUntil    DateTime?
+  timeoutMs      Int      @default(60000)
+  failureClass   String? // TRANSIENT | PERMANENT
+  lastError      String?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime @default(now())
+  logsJson       String?
+
+  @@index([status, runAt])
+  @@index([kind, status])
+}
+
+// ─── Trading release governance ───────────────────────────────────────
+// Execution stays OFF until every review gate below is APPROVED by a
+// platform admin (decision notes + actor are mandatory and audited),
+// the kill switch is CLEAR, and TRADING_ENABLED=true is present in the
+// process environment. All three conditions are required — this model
+// records human review, the env var records the operator's explicit intent.
+
+model TradingReleaseGate {
+  id            String    @id @default(cuid())
+  key           String    @unique // PRODUCT_REVIEW | LEGAL_JURISDICTION_REVIEW | PROVIDER_INTEGRATION_REVIEW | SECURITY_REVIEW | EXECUTION_KILL_SWITCH
+  title         String
+  description   String
+  state         String    @default("NOT_STARTED") // gates: NOT_STARTED | IN_REVIEW | APPROVED | REJECTED · kill switch: CLEAR | ENGAGED
+  decisionNotes String?
+  decidedBy     String?
+  decidedAt     DateTime?
+  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now())
+}

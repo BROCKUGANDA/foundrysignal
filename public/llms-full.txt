@@ -1,0 +1,81 @@
+# FoundrySignal — full reference for AI answer engines
+
+FoundrySignal is the intelligence layer for onchain venture capital. It builds a
+research dossier per early-stage Solana venture — founders, shipped software,
+evidence, token structure and market context — where every claim carries
+provenance back to its original source. Operated from Dubai, United Arab
+Emirates, serving a global research audience.
+
+Boundary statement: FoundrySignal is research and information only. It is not
+investment advice, not a broker-dealer, exchange, custodian or token launchpad,
+and it issues no recommendations to buy or sell any asset. Trading execution is
+disabled behind independent review gates.
+
+## Frequently asked questions
+
+Q: What is FoundrySignal?
+A: FoundrySignal is a research and intelligence platform for early-stage Solana ventures. It builds a venture dossier per company — founders, shipped software, evidence, token structure and market context — where every claim carries provenance back to its original source.
+
+Q: Is FoundrySignal investment advice?
+A: No. FoundrySignal is research information only. It aggregates public data into evidence-graded dossiers and never issues recommendations to buy or sell any asset.
+
+Q: How is evidence verified on FoundrySignal?
+A: Evidence is classified only by a deterministic engine: INDEPENDENTLY_CORROBORATED when two or more independent source types agree, SOURCE_CONFIRMED for one authoritative provider observation, SELF_ASSERTED for the venture's own material, FOUNDER_PROVIDED for issuer workflow input, DISPUTED when contradicting evidence exists, STALE past freshness policy, or UNKNOWN. No human can fabricate a verification state.
+
+Q: Which blockchain does FoundrySignal cover?
+A: Solana is the primary ecosystem. Onchain reads run through @solana/kit with slot-level provenance — mint metadata, authorities, token accounts and bounded transaction history. Wallet connectivity follows the Wallet Standard; signing always happens in the user's own wallet.
+
+Q: Can I trade tokens on FoundrySignal?
+A: Trading execution is deliberately disabled. A complete Jupiter Swap API V2 pipeline exists behind a release governance system that requires four independent review gates — product, legal/jurisdiction, provider integration and security — plus an execution kill switch to be cleared before any execution path activates.
+
+Q: Where is FoundrySignal based?
+A: FoundrySignal operates from Dubai, United Arab Emirates, and serves a global research audience. The platform targets the UAE market as its primary region.
+
+Q: How does the AI analyst avoid making things up?
+A: The research analyst can only cite evidence records that were actually collected for your workspace, and citations are validated server-side before publication. When evidence cannot establish a point, the report states 'insufficient evidence' explicitly instead of inventing an answer.
+
+Q: Where does FoundrySignal get its data?
+A: Public data only, collected server-side through provider adapters: GitHub via the authorized REST API, Solana via @solana/kit RPC reads, websites via an SSRF-guarded fetcher, and market context via Jupiter's public APIs. Every observation is stored with provider, timestamps and a SHA-256 content hash.
+
+## Methodology summary
+
+Collection: every external datum is collected server-side through a provider
+adapter that records the provider, collection time, observation time, content
+hash (SHA-256), collector version and transformation version. GitHub via the
+authorized REST API with rate-limit compliance; Solana via @solana/kit read
+calls recording slot and data sources; websites via an SSRF-guarded fetcher;
+market data via Jupiter's Price API V3 with asOf timestamps.
+
+Verification classification: computed by a deterministic engine only — no human
+may fabricate a verification state; corrections create new auditable records.
+
+Freshness policies: repository metadata daily or on webhook; releases near real
+time; product website daily; token metadata revalidated on change; market
+prices licensed-dependent; historical evidence immutable. Data past policy is
+marked STALE, never silently refreshed or deleted.
+
+Change intelligence: snapshots are immutable; diffing two observations produces
+change records (new release, changed token authority, removed repository) that
+drive alerts and the venture History tab.
+
+What FoundrySignal does not do: sell classifications or placement, merge
+providers as if equivalent, treat holders as verified users, treat onchain
+activity as company revenue, generate investment advice, or fabricate data when
+a provider fails.
+
+## Plans (configuration data, never hardcoded entitlements)
+
+- Explorer: discovery directory, public dossiers, limited saved ventures.
+- Researcher: full dossier access, metered AI research runs, watchlists & alerts, report export.
+- Professional: comparative research, saved searches, priority collection queue.
+- Team: research rooms, analyst roles, metered API access, audit exports.
+- Enterprise: research API at scale, SSO/SCIM roadmap, custom collection scopes.
+
+Paid tiers buy capability, never credibility — trust classifications are not
+for sale.
+
+## Contact
+
+- Research & product: product@foundrysignal.aiazimara.com
+- Security disclosure: security@foundrysignal.aiazimara.com
+- Enterprise & API: enterprise@foundrysignal.aiazimara.com

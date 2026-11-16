@@ -1,0 +1,274 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   FOUNDRYSIGNAL — PRIMITIVE TOKEN LAYER
+   Theme-invariant scales. Every value here is raw; semantic tokens in
+   tokens.css reference these and are the only thing components consume.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Color ramps ──────────────────────────────────────────────────── */
+  /* Signal mint — primary accent (cool, high-chroma, institutional). */
+  --fs-mint-50: #e6fbf6;
+  --fs-mint-100: #c4f5e9;
+  --fs-mint-200: #9deedb;
+  --fs-mint-300: #7ce3ce;
+  --fs-mint-400: #64e5cb;
+  --fs-mint-500: #40cbb1;
+  --fs-mint-600: #21a893;
+  --fs-mint-700: #158270;
+  --fs-mint-800: #0f6155;
+  --fs-mint-900: #0a453d;
+  --fs-mint-950: #06201a;
+
+  /* Electric blue — secondary accent (data, links, attribution). */
+  --fs-blue-50: #eef2ff;
+  --fs-blue-100: #dce4ff;
+  --fs-blue-200: #bccaff;
+  --fs-blue-300: #9db0ff;
+  --fs-blue-400: #7899ff;
+  --fs-blue-500: #5a7bf0;
+  --fs-blue-600: #4361d8;
+  --fs-blue-700: #364caf;
+  --fs-blue-800: #293a80;
+  --fs-blue-900: #1c2757;
+  --fs-blue-950: #101731;
+
+  /* Obsidian — dark neutral ramp (cool, never pure black). */
+  --fs-obsidian-0: #05070c;
+  --fs-obsidian-50: #080b12;
+  --fs-obsidian-100: #0d131d;
+  --fs-obsidian-200: #111823;
+  --fs-obsidian-300: #182332;
+  --fs-obsidian-400: #202e40;
+  --fs-obsidian-500: #2a3b50;
+  --fs-obsidian-600: #3a4c63;
+  --fs-obsidian-700: #54677f;
+  --fs-obsidian-800: #8a99ab;
+  --fs-obsidian-900: #b9c5d2;
+  --fs-obsidian-950: #eaf0f5;
+
+  /* Porcelain — light neutral ramp. */
+  --fs-porcelain-0: #ffffff;
+  --fs-porcelain-50: #f7fafc;
+  --fs-porcelain-100: #f2f5f9;
+  --fs-porcelain-200: #e8edf3;
+  --fs-porcelain-300: #dde4ec;
+  --fs-porcelain-400: #c8d2de;
+  --fs-porcelain-500: #a8b6c6;
+  --fs-porcelain-600: #8593a5;
+  --fs-porcelain-700: #5c6b7d;
+  --fs-porcelain-800: #2c3a4d;
+  --fs-porcelain-900: #0b1220;
+
+  /* Amber — research provenance, warnings, "unverified". */
+  --fs-amber-50: #fdf6ea;
+  --fs-amber-100: #f9e9cb;
+  --fs-amber-200: #f2d7a3;
+  --fs-amber-300: #e8b56f;
+  --fs-amber-400: #d99f4c;
+  --fs-amber-500: #c08432;
+  --fs-amber-600: #a8741f;
+  --fs-amber-700: #855a16;
+  --fs-amber-800: #63420f;
+  --fs-amber-900: #422b09;
+  --fs-amber-950: #241805;
+
+  /* Coral — risk, contradiction, destructive. */
+  --fs-coral-50: #feeff0;
+  --fs-coral-100: #fddcdd;
+  --fs-coral-200: #fbb9bd;
+  --fs-coral-300: #ff747d;
+  --fs-coral-400: #f25760;
+  --fs-coral-500: #dd3f49;
+  --fs-coral-600: #c02c37;
+  --fs-coral-700: #9a2530;
+  --fs-coral-800: #751d27;
+  --fs-coral-900: #53151d;
+  --fs-coral-950: #2d0a0f;
+
+  /* Green — positive delta, corroborated evidence. */
+  --fs-green-50: #eafaf2;
+  --fs-green-100: #cdf3e0;
+  --fs-green-200: #9ce6a8;
+  --fs-green-300: #6fd489;
+  --fs-green-400: #45ba6b;
+  --fs-green-500: #2c9b55;
+  --fs-green-600: #1f7c45;
+  --fs-green-700: #196037;
+  --fs-green-800: #134a2b;
+  --fs-green-900: #0d3420;
+  --fs-green-950: #061b11;
+
+  /* Violet — evidence graph node class, enrichment series. */
+  --fs-violet-50: #f6f0ff;
+  --fs-violet-100: #ebddff;
+  --fs-violet-200: #d9a7ff;
+  --fs-violet-300: #c389f5;
+  --fs-violet-400: #a866e4;
+  --fs-violet-500: #8d4bc9;
+  --fs-violet-600: #7439a8;
+  --fs-violet-700: #5b2d84;
+  --fs-violet-800: #452261;
+  --fs-violet-900: #30163f;
+  --fs-violet-950: #190a22;
+
+  /* ── Typography ───────────────────────────────────────────────────── */
+  --fs-font-sans: var(--font-geist-sans), "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fs-font-brand: "Space Grotesk", var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --fs-font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* Type scale — 1.2 minor-third-ish progression, fluid at the top end. */
+  --fs-text-2xs: 0.625rem;   /* 10px  — dense metadata, axis labels        */
+  --fs-text-xs: 0.6875rem;   /* 11px  — table meta, chips                  */
+  --fs-text-sm: 0.8125rem;   /* 13px  — body small, controls               */
+  --fs-text-md: 0.9375rem;   /* 15px  — body copy                          */
+  --fs-text-lg: 1.0625rem;   /* 17px  — lead paragraph, card title         */
+  --fs-text-xl: 1.3125rem;   /* 21px  — section title                      */
+  --fs-text-2xl: 1.75rem;    /* 28px  — page title                         */
+  --fs-text-3xl: 2.25rem;    /* 36px  — display                            */
+  --fs-text-4xl: clamp(2.5rem, 1.9rem + 2.4vw, 3.5rem); /* hero fluid   */
+
+  --fs-leading-none: 1;
+  --fs-leading-tight: 1.15;
+  --fs-leading-snug: 1.3;
+  --fs-leading-normal: 1.55;
+  --fs-leading-relaxed: 1.7;
+
+  --fs-tracking-tighter: -0.04em;
+  --fs-tracking-tight: -0.02em;
+  --fs-tracking-normal: 0;
+  --fs-tracking-wide: 0.04em;
+  --fs-tracking-caps: 0.09em;
+
+  --fs-weight-regular: 400;
+  --fs-weight-medium: 500;
+  --fs-weight-semibold: 600;
+  --fs-weight-bold: 700;
+
+  /* ── Spacing scale (4px base) ─────────────────────────────────────── */
+  --fs-space-0: 0;
+  --fs-space-1: 0.25rem;   /* 4   */
+  --fs-space-2: 0.5rem;    /* 8   */
+  --fs-space-2-5: 0.625rem;/* 10  */
+  --fs-space-3: 0.75rem;   /* 12  */
+  --fs-space-4: 1rem;      /* 16  */
+  --fs-space-5: 1.25rem;   /* 20  */
+  --fs-space-6: 1.5rem;    /* 24  */
+  --fs-space-7: 1.75rem;   /* 28  */
+  --fs-space-8: 2rem;      /* 32  */
+  --fs-space-9: 2.25rem;   /* 36  */
+  --fs-space-10: 2.5rem;   /* 40  */
+  --fs-space-12: 3rem;     /* 48  */
+  --fs-space-14: 3.5rem;   /* 56  */
+  --fs-space-16: 4rem;     /* 64  */
+  --fs-space-20: 5rem;     /* 80  */
+  --fs-space-24: 6rem;     /* 96  */
+
+  /* ── Radius ───────────────────────────────────────────────────────── */
+  --fs-radius-none: 0px;
+  --fs-radius-xs: 3px;
+  --fs-radius-sm: 5px;
+  --fs-radius-md: 7px;
+  --fs-radius-lg: 10px;
+  --fs-radius-xl: 14px;
+  --fs-radius-2xl: 18px;
+  --fs-radius-full: 999px;
+
+  /* ── Border widths ────────────────────────────────────────────────── */
+  --fs-border-hairline: 1px;
+  --fs-border-thick: 1.5px;
+  --fs-border-focus: 2px;
+
+  /* ── Shadow / elevation ───────────────────────────────────────────── */
+  --fs-shadow-xs: 0 1px 2px rgba(3, 6, 12, 0.28);
+  --fs-shadow-sm: 0 1px 3px rgba(3, 6, 12, 0.32), 0 1px 2px rgba(3, 6, 12, 0.24);
+  --fs-shadow-md: 0 4px 12px rgba(3, 6, 12, 0.36), 0 2px 4px rgba(3, 6, 12, 0.24);
+  --fs-shadow-lg: 0 10px 28px rgba(3, 6, 12, 0.42), 0 4px 8px rgba(3, 6, 12, 0.22);
+  --fs-shadow-xl: 0 22px 56px rgba(3, 6, 12, 0.5), 0 8px 16px rgba(3, 6, 12, 0.24);
+  --fs-shadow-inset-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --fs-shadow-glow-accent: 0 0 0 1px color-mix(in srgb, var(--fs-mint-400) 40%, transparent),
+    0 0 24px color-mix(in srgb, var(--fs-mint-400) 22%, transparent);
+  --fs-shadow-glow-blue: 0 0 0 1px color-mix(in srgb, var(--fs-blue-400) 40%, transparent),
+    0 0 24px color-mix(in srgb, var(--fs-blue-400) 20%, transparent);
+
+  /* ── Gradients ────────────────────────────────────────────────────── */
+  --fs-gradient-signal: linear-gradient(
+    135deg,
+    var(--fs-mint-400) 0%,
+    var(--fs-mint-300) 38%,
+    var(--fs-blue-400) 100%
+  );
+  --fs-gradient-signal-soft: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--fs-mint-400) 16%, transparent) 0%,
+    color-mix(in srgb, var(--fs-blue-400) 12%, transparent) 100%
+  );
+  --fs-gradient-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0) 42%
+  );
+  --fs-gradient-fade-up: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--fs-blue-400) 9%, transparent) 0%,
+    transparent 72%
+  );
+  --fs-gradient-prism: radial-gradient(
+      circle at 30% 20%,
+      color-mix(in srgb, var(--fs-mint-400) 16%, transparent) 0%,
+      transparent 56%
+    ),
+    radial-gradient(
+      circle at 74% 78%,
+      color-mix(in srgb, var(--fs-blue-400) 14%, transparent) 0%,
+      transparent 56%
+    );
+
+  /* ── Motion ───────────────────────────────────────────────────────── */
+  /* Durations */
+  --fs-duration-instant: 0ms;
+  --fs-duration-micro: 90ms;
+  --fs-duration-fast: 130ms;
+  --fs-duration-base: 180ms;
+  --fs-duration-slow: 260ms;
+  --fs-duration-slower: 380ms;
+  --fs-duration-reveal: 520ms;
+  --fs-duration-ambient: 2400ms;
+  --fs-duration-orbit: 18000ms;
+
+  /* Easings — all are "ease-out" biased: fast start, settled finish. */
+  --fs-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --fs-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --fs-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --fs-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --fs-ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --fs-ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+
+  /* ── Breakpoints (documentation; Tailwind consumes @theme) ────────── */
+  --fs-bp-sm: 40rem;    /* 640px  */
+  --fs-bp-md: 48rem;    /* 768px  */
+  --fs-bp-lg: 64rem;    /* 1024px */
+  --fs-bp-xl: 80rem;    /* 1280px */
+  --fs-bp-2xl: 96rem;   /* 1536px */
+
+  /* ── Layout ───────────────────────────────────────────────────────── */
+  --fs-container-xs: 30rem;
+  --fs-container-sm: 40rem;
+  --fs-container-md: 48rem;
+  --fs-container-lg: 64rem;
+  --fs-container-xl: 72rem;
+  --fs-container-2xl: 80rem;
+
+  --fs-touch-target-min: 44px;   /* WCAG 2.5.8 minimum */
+  --fs-focus-ring-width: 2px;
+  --fs-focus-ring-offset: 2px;
+
+  /* ── Z-index scale (documented, avoids magic numbers) ─────────────── */
+  --fs-z-base: 0;
+  --fs-z-raised: 10;
+  --fs-z-sticky: 20;
+  --fs-z-dropdown: 30;
+  --fs-z-overlay: 40;
+  --fs-z-modal: 50;
+  --fs-z-toast: 60;
+  --fs-z-skip: 100;
+}
