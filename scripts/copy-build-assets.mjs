@@ -14,7 +14,7 @@ for (const target of [resolve(standalone, ".next"), standalone]) {
   mkdirSync(target, { recursive: true });
 }
 
-cpSync(resolve(root, ".next/static"), resolve(standalone, ".next"), { recursive: true });
+cpSync(resolve(root, ".next/static"), resolve(standalone, ".next/static"), { recursive: true });
 cpSync(resolve(root, "public"), standalone, { recursive: true });
 
 console.log(`[copy-build-assets] static + public -> ${standalone}`);

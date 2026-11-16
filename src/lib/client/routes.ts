@@ -7,7 +7,7 @@ export type Section =
   | "pricing" | "about" | "contact" | "legal" | "privacy" | "security-disclosure"
   | "auth"
   | "discover" | "dossier" | "research" | "watchlists" | "markets" | "settings" | "admin"
-  | "design-system";
+  | "design-system" | "trade";
 
 export interface RouteMatch {
   section: Section;
@@ -35,6 +35,7 @@ const MARKETING_PATHS: Record<string, Section> = {
   settings: "settings",
   admin: "admin",
   "design-system": "design-system",
+  "trade": "trade",
 };
 
 const SECTION_PATHS: Partial<Record<Section, string>> = {
@@ -58,6 +59,7 @@ const SECTION_PATHS: Partial<Record<Section, string>> = {
   settings: "/settings",
   admin: "/admin",
   "design-system": "/design-system",
+  "trade": "/trade",
 };
 
 /** Builds a canonical URL for a section. Missing dossier slugs fall back to /discover. */
@@ -160,6 +162,7 @@ const SECTION_TITLES: Record<Section, string> = {
   markets: "Markets",
   settings: "Settings",
   admin: "Administration",
+  "trade": "Trading",
   "design-system": "Design system",
 };
 

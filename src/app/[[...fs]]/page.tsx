@@ -43,6 +43,7 @@ export function generateStaticParams() {
     { fs: ["settings"] },
     { fs: ["admin"] },
     { fs: ["design-system"] },
+    { fs: ["trade"] },
   ];
 }
 
