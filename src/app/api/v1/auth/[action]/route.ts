@@ -4,7 +4,16 @@ import { registerUser, loginUser, logoutUser } from "@/lib/auth/service";
 import { resolveSession } from "@/lib/auth/session";
 
 function clientIp(req: NextRequest): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  // Cloudflare sets CF-Connecting-IP; the edge proxy sets X-Forwarded-For
+  // from the peer address. A client-supplied XFF list must never be the
+  // throttle key: rotating its first entry would bypass rate limits.
+  const cf = req.headers.get("cf-connecting-ip");
+  if (cf?.trim()) return cf.trim();
+  const real = req.headers.get("x-real-ip");
+  if (real?.trim()) return real.trim();
+  const forwarded = req.headers.get("x-forwarded-for");
+  const last = forwarded?.split(",").map((part) => part.trim()).filter(Boolean).pop();
+  return last ?? "local";
 }
 
 export const POST = handler(async ({ req, requestId }) => {

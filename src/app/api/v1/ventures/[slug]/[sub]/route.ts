@@ -24,7 +24,7 @@ export const GET = handler(async ({ req, requestId }) => {
   const parts = req.nextUrl.pathname.split("/"); // /api/v1/ventures/{slug}/{sub}
   const slug = parts[4];
   const sub = parts[5];
-  const venture = await db.venture.findUnique({ where: { slug } });
+  const venture = await db.venture.findFirst({ where: { slug, visibility: "PUBLIC" } });
   if (!venture) throw new ApiHttpError("NOT_FOUND", "Venture not found.", false);
 
   if (sub === "evidence") {
@@ -78,7 +78,7 @@ export const POST = handler(async ({ req, requestId }) => {
   const parts = req.nextUrl.pathname.split("/");
   const slug = parts[4];
   const sub = parts[5];
-  const venture = await db.venture.findUnique({ where: { slug } });
+  const venture = await db.venture.findFirst({ where: { slug, visibility: "PUBLIC" } });
   if (!venture) throw new ApiHttpError("NOT_FOUND", "Venture not found.", false);
   const body = await req.json().catch(() => ({}));
 
@@ -233,10 +233,14 @@ export const DELETE = handler(async ({ req, requestId }) => {
   const sub = parts[5];
   if (sub === "watchlists") {
     requireWorkspaceRole(ctx, "ANALYST");
-    const venture = await db.venture.findUnique({ where: { slug } });
+    const venture = await db.venture.findFirst({ where: { slug, visibility: "PUBLIC" } });
     if (!venture) throw new ApiHttpError("NOT_FOUND", "Venture not found.", false);
-    const body = await req.json().catch(() => ({}));
-    const watchlistId = String((body as Record<string, unknown>).watchlistId ?? "");
+    const parsed = z
+      .object({ watchlistId: z.string().min(1).max(64) })
+      .strict()
+      .safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) throw new ApiHttpError("BAD_REQUEST", "watchlistId is required.", false);
+    const watchlistId = parsed.data.watchlistId;
     // Tenant guard: the watchlist MUST belong to the caller's workspace —
     // cross-tenant deletion is rejected even when the id is guessed.
     const watchlist = await db.watchlist.findFirst({

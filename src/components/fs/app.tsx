@@ -208,7 +208,9 @@ function FoundrySignalRouter() {
     <>
       <OfflineBanner />
       <AppShell account={account} onLogout={onLogout} alertCount={0}>
-        {(match.section === "discover" || match.section === "home") && (
+        {(match.section === "discover" ||
+          match.section === "home" ||
+          (match.section === "auth" && account)) && (
           <DiscoverView account={account} />
         )}
         {match.section === "dossier" && match.params.slug ? (

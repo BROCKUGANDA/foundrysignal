@@ -121,6 +121,10 @@ export function pathToSection(pathname: string, search: string): RouteMatch | nu
       const q = qs.get("q");
       if (q) params.q = q;
     }
+    if (section === "auth") {
+      const mode = qs.get("mode");
+      if (mode === "login" || mode === "register") params.mode = mode;
+    }
   }
   return { section, params };
 }

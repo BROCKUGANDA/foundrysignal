@@ -1,7 +1,7 @@
 import { handler, ok } from "@/lib/contracts/http";
 import { requireAuth, requirePlatformRole } from "@/lib/auth/context";
 import { GithubAdapter } from "@/lib/providers/github";
-import { SolanaAdapter } from "@/lib/providers/solana";
+import { SolanaAdapter, safeRpcEndpoint } from "@/lib/providers/solana";
 import { JupiterAdapter } from "@/lib/providers/jupiter";
 import { breakerSnapshot } from "@/lib/providers/framework";
 import { db } from "@/lib/db";
@@ -40,7 +40,7 @@ export const GET = handler(async ({ requestId }) => {
             name: "solana-rpc",
             health: solHealth,
             configured: true,
-            note: `${sol.rpcEndpoint}${sol.indexedProviderConfigured ? "" : " · Helius indexed provider not configured (reads only, public RPC limits)"}`,
+            note: `${safeRpcEndpoint(sol.rpcEndpoint)}${sol.indexedProviderConfigured ? "" : " · Helius indexed provider not configured (reads only, public RPC limits)"}`,
             rateLimit: { limit: solRate.limit, remaining: solRate.remaining, resetAt: solRate.resetAt?.toISOString() ?? null },
             breaker: breakerSnapshot("solana-rpc"),
           },

@@ -37,6 +37,20 @@ function validateMint(mint: string): Address {
 
 const FALLBACK_RPC = "https://api.mainnet-beta.solana.com";
 
+/** Strips credential-like query params before an endpoint is displayed in diagnostics.
+ * Never use this value for the actual RPC connection. */
+export function safeRpcEndpoint(endpoint: string): string {
+  try {
+    const url = new URL(endpoint);
+    for (const key of ["api-key", "api_key", "key", "token", "authorization"]) {
+      if (url.searchParams.has(key)) url.searchParams.set(key, "REDACTED");
+    }
+    return url.toString();
+  } catch {
+    return endpoint;
+  }
+}
+
 export class SolanaAdapter {
   private rpc: Rpc<SolanaRpcApi>;
   private endpoint: string;

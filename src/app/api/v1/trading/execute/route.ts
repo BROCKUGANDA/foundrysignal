@@ -54,7 +54,7 @@ export const POST = handler(async ({ req, requestId }) => {
   }
   // Only a fresh, unconsumed, unexpired intent can execute. Consumed, failed
   // and stale-quote intents are rejected before any provider call (F-4).
-  if (intent.status !== "GATED_EXECUTION_DISABLED") {
+  if (intent.status !== "GATED_EXECUTION_DISABLED" && intent.status !== "INTENT_RECORDED") {
     throw new ApiHttpError("CONFLICT", `Order intent is not executable (status ${intent.status}).`, false);
   }
   if (intent.quoteExpiresAt && intent.quoteExpiresAt.getTime() < Date.now()) {
@@ -64,7 +64,7 @@ export const POST = handler(async ({ req, requestId }) => {
   // Exactly ONE concurrent caller wins the transition ORDER_INTENT → SWAP;
   // every other caller loses (count 0 → conflict) and can never double-submit.
   const claim = await db.transactionRecord.updateMany({
-    where: { id: intent.id, userId: ctx.userId, kind: "ORDER_INTENT", status: "GATED_EXECUTION_DISABLED" },
+    where: { id: intent.id, userId: ctx.userId, kind: "ORDER_INTENT", status: { in: ["GATED_EXECUTION_DISABLED", "INTENT_RECORDED"] } },
     data: { kind: "SWAP", status: "SUBMITTED" },
   });
   if (claim.count !== 1) {

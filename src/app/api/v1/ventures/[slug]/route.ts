@@ -5,8 +5,8 @@ import { db } from "@/lib/db";
 export const GET = handler(async ({ requestId, req }) => {
   await requireAuth();
   const slug = req.nextUrl.pathname.split("/")[4]; // /api/v1/ventures/{slug}
-  const venture = await db.venture.findUnique({
-    where: { slug },
+  const venture = await db.venture.findFirst({
+    where: { slug, visibility: "PUBLIC" },
     include: {
       identities: true,
       founderLinks: { include: { founder: { include: { identityLinks: true, passportEvents: { orderBy: { occurredAt: "desc" }, take: 30 } } } } },

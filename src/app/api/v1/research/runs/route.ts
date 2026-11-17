@@ -35,7 +35,7 @@ export const POST = handler(async ({ req, requestId }) => {
   const ctx = await requireAuth();
   const body = await req.json().catch(() => ({}));
   const parsed = StartRunSchema.parse(body);
-  const venture = await db.venture.findUnique({ where: { id: parsed.ventureId } });
+  const venture = await db.venture.findFirst({ where: { id: parsed.ventureId, visibility: "PUBLIC" } });
   if (!venture) throw new ApiHttpError("NOT_FOUND", "Venture not found.", false);
 
   // Concurrency guard: one running run per workspace per venture

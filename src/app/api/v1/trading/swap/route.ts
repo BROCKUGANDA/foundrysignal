@@ -1,6 +1,7 @@
 import { handler, ok, ApiHttpError } from "@/lib/contracts/http";
 import { requireAuth } from "@/lib/auth/context";
 import { JupiterAdapter } from "@/lib/providers/jupiter";
+import { getTradingReadiness } from "@/lib/domain/trading/gates";
 import { isValidSolanaAddress } from "@/lib/providers/solana";
 import { z } from "zod";
 
@@ -15,6 +16,10 @@ const bodySchema = z.object({
 /** Build a Jupiter unsigned swap transaction (client wallet signs off-device). */
 export const POST = handler(async ({ req, requestId }) => {
   const ctx = await requireAuth();
+  const readiness = await getTradingReadiness();
+  if (!readiness.executionAllowed) {
+    throw new ApiHttpError("EXECUTION_GATED", `Swap transaction building is disabled — ${readiness.blockReason}.`, false, { readiness });
+  }
   const body = await req.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
