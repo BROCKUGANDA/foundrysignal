@@ -289,23 +289,47 @@ export async function verifyCheckoutIntent(input: {
   }
 
   const plan = await db.plan.findFirst({ where: { code: intent.planCode, active: true } });
-  const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const RENEWAL_DAYS = 30 * 24 * 60 * 60 * 1000;
 
-  // Idempotent entitlement: (provider, providerRef) is unique, so a retry or a
-  // second verification cannot double-grant.
+  // Renewal/upgrade: if the workspace already carries a USDC subscription,
+  // paying again extends its current period from the later of (now, period
+  // end) by 30 days and can switch the plan. One subscription row per
+  // workspace keeps entitlement resolution unambiguous.
   if (plan) {
-    await db.subscription.upsert({
-      where: { provider_providerRef: { provider: BILLING_PROVIDER, providerRef: intent.memo } },
-      create: {
-        workspaceId: intent.workspaceId,
-        planId: plan.id,
-        status: "ACTIVE",
-        provider: BILLING_PROVIDER,
-        providerRef: intent.memo,
-        currentPeriodEnd: periodEnd,
-      },
-      update: { status: "ACTIVE", currentPeriodEnd: periodEnd, cancelAtPeriodEnd: false },
+    const existing = await db.subscription.findFirst({
+      where: { workspaceId: intent.workspaceId, provider: BILLING_PROVIDER },
+      orderBy: { createdAt: "asc" },
     });
+    if (existing) {
+      const base =
+        existing.currentPeriodEnd && existing.currentPeriodEnd.getTime() > Date.now()
+          ? existing.currentPeriodEnd
+          : new Date();
+      await db.subscription.update({
+        where: { id: existing.id },
+        data: {
+          status: "ACTIVE",
+          planId: plan.id,
+          currentPeriodEnd: new Date(base.getTime() + RENEWAL_DAYS),
+          cancelAtPeriodEnd: false,
+        },
+      });
+    } else {
+      // Idempotent entitlement: (provider, providerRef) is unique, so a retry
+      // or a second verification cannot double-grant.
+      await db.subscription.upsert({
+        where: { provider_providerRef: { provider: BILLING_PROVIDER, providerRef: intent.memo } },
+        create: {
+          workspaceId: intent.workspaceId,
+          planId: plan.id,
+          status: "ACTIVE",
+          provider: BILLING_PROVIDER,
+          providerRef: intent.memo,
+          currentPeriodEnd: new Date(Date.now() + RENEWAL_DAYS),
+        },
+        update: { status: "ACTIVE", currentPeriodEnd: new Date(Date.now() + RENEWAL_DAYS), cancelAtPeriodEnd: false },
+      });
+    }
   }
 
   const updated = await db.cryptoPaymentIntent.update({
