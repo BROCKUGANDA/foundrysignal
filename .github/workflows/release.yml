@@ -13,7 +13,7 @@ jobs:
     name: Auto-version & release
     runs-on: [self-hosted, linux]
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           release-type: node
           package-name: foundrysignal
