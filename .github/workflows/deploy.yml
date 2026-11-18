@@ -62,7 +62,7 @@ jobs:
           PAYOUT_WALLET_EVM: ${{ secrets.PAYOUT_WALLET_EVM }}
           USDC_MINT: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
           BILLING_PROVIDER: ${{ secrets.BILLING_PROVIDER }}
-          TRADING_ENABLED: "false"
+          TRADING_ENABLED: "true"
 
       - name: Point the service at the env file (systemd drop-in, idempotent)
         run: |
