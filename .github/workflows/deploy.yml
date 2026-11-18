@@ -82,6 +82,10 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: bun x prisma migrate deploy
 
+      - name: Generate Prisma client
+        working-directory: /home/ubuntu/ai-azimara-foundrysignal
+        run: bun x prisma generate
+
       - name: Build
         working-directory: /home/ubuntu/ai-azimara-foundrysignal
         run: bun run build
