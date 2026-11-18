@@ -397,6 +397,50 @@ function SessionsSection() {
   );
 }
 
+function PasswordSection() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const change = useMutation({
+    mutationFn: () => api.post("/api/v1/account/password", { currentPassword, newPassword }),
+    onSuccess: () => {
+      toast.success("Password changed");
+      setCurrentPassword("");
+      setNewPassword("");
+    },
+    onError: (e) => toast.apiError("Password not changed", e),
+  });
+  return (
+    <SectionShell title="Password" glyph="token" id="fs-password">
+      <Card>
+        <CardContent className="flex max-w-md flex-col gap-4">
+          <Field id="fs-current-password" label="Current password" required>
+            {(props) => (
+              <Input {...props} type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+            )}
+          </Field>
+          <Field id="fs-new-password" label="New password" required hint="Minimum 10 characters">
+            {(props) => (
+              <Input {...props} type="password" minLength={10} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+            )}
+          </Field>
+          <div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => change.mutate()}
+              disabled={!currentPassword || newPassword.length < 10}
+              loading={change.isPending}
+              loadingLabel="Changing password"
+            >
+              Change password
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </SectionShell>
+  );
+}
+
 export function SettingsView({
   account,
   onAccountRefresh,
@@ -531,6 +575,8 @@ export function SettingsView({
       {isPlatformAdmin ? <BillingSection /> : null}
 
       <SessionsSection />
+
+      <PasswordSection />
 
       <SectionShell title="Appearance & motion" id="fs-appearance">
         <Card>
