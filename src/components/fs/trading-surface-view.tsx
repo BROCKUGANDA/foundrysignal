@@ -124,7 +124,7 @@ export function TradingView() {
       const unsigned = await api.post<{
         orderId: string;
         transactionBase64: string;
-      }>("/api/v1/trading/swap/unsigned", {
+      }>("/api/v1/trading/swap", {
         inputMint: selectedQuote?.inputMint ?? "",
         outputMint: selectedQuote?.outputMint ?? "",
         amount: selectedQuote?.inAmount ?? "",
