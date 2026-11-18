@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Favicon — 32px optical corrections vs. the emblem master:
+       stroke weights +0.4, node r 2.6, halo removed (turns to mud at 16px),
+       plate radius 7 with a 1px inner keyline so the mark holds on both
+       light and dark browser chrome. -->
+  <rect width="32" height="32" rx="7" fill="#080B12" />
+  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" fill="none" stroke="#7899FF" stroke-opacity="0.22" />
+  <g fill="#EAF0F5">
+    <rect x="6" y="4" width="3.5" height="24" rx="1.4" />
+    <rect x="6" y="4" width="20.5" height="3.5" rx="1.4" />
+    <rect x="6" y="14" width="16.5" height="3.5" rx="1.4" />
+  </g>
+  <g fill="none" stroke="#7899FF" stroke-width="1.8" stroke-linecap="round" opacity="0.9">
+    <path d="M26.5 7.5 L24 19.4" />
+    <path d="M22.5 17.5 L22.9 19.4" />
+  </g>
+  <circle cx="24" cy="21.6" r="2.6" fill="#64E5CB" />
+</svg>

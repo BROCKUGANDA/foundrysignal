@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-labelledby="fs-emblem-title">
+  <title id="fs-emblem-title">FoundrySignal emblem</title>
+  <!-- FoundrySignal emblem — editable master.
+       Construction: a geometric "F" (spine + two arms) whose arms resolve
+       into a single signal node at (24, 21.6). Three converging paths
+       terminate on that node: many observations, one signal.
+
+       Grid      32 x 32
+       Spine     x 6, y 4 -> 28, w 3.5, r 1.4
+       Top arm   y 4, x 6 -> 26.5, h 3.5
+       Mid arm   y 14, x 6 -> 22.5, h 3.5
+       Node      (24, 21.6), r 2.4; halo r 4.6 @ 35%
+       Palette   --fs-text / --fs-accent / --fs-accent-2 (currentColor in mono) -->
+  <g fill="currentColor">
+    <rect x="6" y="4" width="3.5" height="24" rx="1.4" />
+    <rect x="6" y="4" width="20.5" height="3.5" rx="1.4" />
+    <rect x="6" y="14" width="16.5" height="3.5" rx="1.4" />
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.85">
+    <path d="M26.5 7.5 L24 19.4" />
+    <path d="M22.5 17.5 L22.9 19.4" />
+  </g>
+  <circle cx="24" cy="21.6" r="2.4" fill="currentColor" />
+  <circle cx="24" cy="21.6" r="4.6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.35" />
+</svg>

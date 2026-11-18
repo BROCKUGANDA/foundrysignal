@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-labelledby="fs-mono-title">
+  <title id="fs-mono-title">FoundrySignal emblem — monochrome</title>
+  <!-- Monochrome emblem — editable master.
+       Single ink (currentColor). Used on: white/brand-color grounds, print,
+       fax-grade rendering, embroidered/etched production, and anywhere the
+       three-colour signal must collapse to one weight.
+
+       The signal node and halo drop to strokes so the mark still reads at
+       16px in one colour; no fill-only elements remain. -->
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M7.75 5.5 V26.5" />
+    <path d="M7.75 5.5 H25" />
+    <path d="M7.75 15.5 H21" />
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.9">
+    <path d="M25 8.5 L22.6 19.4" />
+    <path d="M21 17.5 L21.4 19.4" />
+  </g>
+  <circle cx="22.8" cy="21.6" r="2.4" fill="currentColor" />
+  <circle cx="22.8" cy="21.6" r="4.6" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5" />
+</svg>

@@ -1,0 +1,4 @@
+/* FOUNDRYSIGNAL — design system entry.
+   Supersedes the previous monolithic globals.css. */
+
+@import "../styles/fs/index.css";

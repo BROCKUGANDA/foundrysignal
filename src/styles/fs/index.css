@@ -1,0 +1,118 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   FOUNDRYSIGNAL DESIGN SYSTEM — CSS ENTRY POINT
+   Import order is load order: primitives → semantic themes → base → Tailwind.
+   Anything that must not be purged lives here, not in a component file.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./themes.css";
+@import "./base.css";
+
+@custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(.light *));
+
+/* ── Tailwind v4 theme bridge ──────────────────────────────────────────
+   Tailwind v4 reads design tokens from @theme, not a JS config. Every
+   token below maps a Tailwind utility name onto a --fs-* custom property
+   so `bg-surface`, `text-muted`, `border-hairline` etc. resolve to the
+   theme-aware semantic layer instead of hard-coded palette values.
+   Colors are referenced (not copied) so theme switching cascades. */
+
+@theme inline {
+  /* Color utilities → semantic tokens */
+  --color-bg: var(--fs-bg);
+  --color-bg-deep: var(--fs-bg-deep);
+  --color-surface: var(--fs-surface);
+  --color-surface-2: var(--fs-surface-2);
+  --color-surface-3: var(--fs-surface-3);
+  --color-surface-4: var(--fs-surface-4);
+
+  --color-ink: var(--fs-text);
+  --color-ink-secondary: var(--fs-text-secondary);
+  --color-ink-muted: var(--fs-text-muted);
+  --color-ink-faint: var(--fs-text-faint);
+
+  --color-accent: var(--fs-accent);
+  --color-accent-hover: var(--fs-accent-hover);
+  --color-accent-contrast: var(--fs-accent-contrast);
+  --color-accent-2: var(--fs-accent-2);
+
+  --color-success: var(--fs-success);
+  --color-warning: var(--fs-warning);
+  --color-danger: var(--fs-danger);
+  --color-info: var(--fs-info);
+
+  --color-hairline: var(--fs-border);
+  --color-hairline-strong: var(--fs-border-strong);
+
+  --color-chart-1: var(--fs-chart-1);
+  --color-chart-2: var(--fs-chart-2);
+  --color-chart-3: var(--fs-chart-3);
+  --color-chart-4: var(--fs-chart-4);
+  --color-chart-5: var(--fs-chart-5);
+  --color-chart-6: var(--fs-chart-6);
+
+  /* Radius utilities */
+  --radius-xs: var(--fs-radius-xs);
+  --radius-sm: var(--fs-radius-sm);
+  --radius-md: var(--fs-radius-md);
+  --radius-lg: var(--fs-radius-lg);
+  --radius-xl: var(--fs-radius-xl);
+  --radius-2xl: var(--fs-radius-2xl);
+
+  /* Font families */
+  --font-sans: var(--fs-font-sans);
+  --font-brand: var(--fs-font-brand);
+  --font-mono: var(--fs-font-mono);
+
+  /* Elevation */
+  --shadow-e0: var(--fs-elevation-0);
+  --shadow-e1: var(--fs-elevation-1);
+  --shadow-e2: var(--fs-elevation-2);
+  --shadow-e3: var(--fs-elevation-3);
+  --shadow-e4: var(--fs-elevation-4);
+
+  /* Breakpoints — literal values.
+     `@theme inline` would emit `@media (width >= var(--fs-bp-lg))`, which the
+     CSS optimizer rejects. Tailwind v4 requires breakpoint tokens to be
+     literal lengths. */
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
+
+  /* Motion */
+  --ease-out-quint: var(--fs-ease-out);
+  --ease-spring: var(--fs-ease-spring);
+  --ease-standard: var(--fs-ease-standard);
+
+  /* shadcn/ui compatibility — every primitive in src/components/ui reads
+     these, so the retained shadcn set inherits the FS theme automatically
+     instead of carrying its own neutral palette. */
+  --color-background: var(--fs-bg);
+  --color-foreground: var(--fs-text);
+  --color-card: var(--fs-surface);
+  --color-card-foreground: var(--fs-text);
+  --color-popover: var(--fs-surface-2);
+  --color-popover-foreground: var(--fs-text);
+  --color-primary: var(--fs-accent);
+  --color-primary-foreground: var(--fs-accent-contrast);
+  --color-secondary: var(--fs-surface-3);
+  --color-secondary-foreground: var(--fs-text);
+  --color-muted: var(--fs-surface-2);
+  --color-muted-foreground: var(--fs-text-muted);
+  --color-accent-foreground: var(--fs-text);
+  --color-destructive: var(--fs-danger);
+  --color-destructive-foreground: var(--fs-mint-950);
+  --color-border: var(--fs-border);
+  --color-input: var(--fs-border-strong);
+  --color-ring: var(--fs-focus-ring);
+  --color-chart-1: var(--fs-chart-1);
+  --color-chart-2: var(--fs-chart-2);
+  --color-chart-3: var(--fs-chart-3);
+  --color-chart-4: var(--fs-chart-4);
+  --color-chart-5: var(--fs-chart-5);
+  --radius: var(--fs-radius-lg);
+}
