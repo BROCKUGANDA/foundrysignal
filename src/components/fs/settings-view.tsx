@@ -28,7 +28,7 @@ import {
   toast,
   type BadgeTone,
 } from "@/components/fs";
-import { api, type AccountState, type Capabilities } from "@/lib/client/api";
+import { api, type AccountState, type Capabilities, type SessionList } from "@/lib/client/api";
 import { USER_TYPES, USER_TYPE_LABELS } from "@/lib/contracts/api";
 import { useApp } from "@/lib/client/store";
 
@@ -312,6 +312,91 @@ function BillingSection() {
   );
 }
 
+function SessionsSection() {
+  const qc = useQueryClient();
+  const sessions = useQuery({ queryKey: ["sessions"], queryFn: () => api.get<SessionList>("/api/v1/account/sessions") });
+
+  const revokeOne = useMutation({
+    mutationFn: (id: string) => api.del(`/api/v1/account/sessions/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Session revoked");
+    },
+    onError: (e) => toast.apiError("Session not revoked", e),
+  });
+
+  const revokeOthers = useMutation({
+    mutationFn: () => api.del("/api/v1/account/sessions"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Other sessions revoked. This device stays signed in.");
+    },
+    onError: (e) => toast.apiError("Sessions not revoked", e),
+  });
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+  const otherCount = sessions.data ? sessions.data.sessions.filter((x) => !x.current).length : 0;
+
+  return (
+    <SectionShell title="Sessions" glyph="token" id="fs-sessions">
+      <Card>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-xs leading-relaxed text-ink-muted">
+            Active sessions on this account. Revoking a session signs it out everywhere it is
+            used. This session is marked and is kept when you revoke others.
+          </p>
+          {sessions.isLoading && <LoadingState rows={2} label="Sessions loading" />}
+          {sessions.isError && (
+            <ErrorState
+              title="Sessions unavailable"
+              message={(sessions.error as Error).message}
+              onRetry={() => sessions.refetch()}
+            />
+          )}
+          {sessions.data && (
+            <>
+              <ul className="flex flex-col divide-y divide-[var(--fs-border)]">
+                {sessions.data.sessions.map((s) => (
+                  <li key={s.id} className="flex items-start justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-ink">
+                        {s.current ? "This device (current session)" : "Other session"}
+                      </p>
+                      <p className="mt-0.5 text-2xs leading-relaxed text-ink-muted">
+                        Created {fmt(s.createdAt)} · Last seen {fmt(s.lastSeenAt)} · Expires {fmt(s.expiresAt)}
+                      </p>
+                    </div>
+                    {s.current ? (
+                      <Badge tone="success" dot>Current</Badge>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => revokeOne.mutate(s.id)} loading={revokeOne.isPending}>
+                        Revoke
+                      </Button>
+                    )}
+                  </li>
+                ))}
+                {sessions.data.sessions.length === 0 && (
+                  <li className="py-3 text-2xs text-ink-muted">No active sessions.</li>
+                )}
+              </ul>
+              {otherCount > 0 && (
+                <div>
+                  <Button variant="secondary" size="sm" onClick={() => revokeOthers.mutate()} loading={revokeOthers.isPending}>
+                    <Icon name="close" size={13} />
+                    Revoke {otherCount} other session{otherCount === 1 ? "" : "s"}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </SectionShell>
+  );
+}
+
 export function SettingsView({
   account,
   onAccountRefresh,
@@ -444,6 +529,8 @@ export function SettingsView({
       </SectionShell>
 
       {isPlatformAdmin ? <BillingSection /> : null}
+
+      <SessionsSection />
 
       <SectionShell title="Appearance & motion" id="fs-appearance">
         <Card>

@@ -78,6 +78,11 @@ export async function resolveSession(): Promise<ResolvedSession | null> {
   if (!token) return null;
   const session = await db.session.findUnique({ where: { tokenHash: sha256(token) } });
   if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
+  // Throttled lastSeenAt heartbeat — refresh at most every 5 minutes per session.
+  const fiveMinutes = 5 * 60 * 1000;
+  if (Date.now() - session.lastSeenAt.getTime() > fiveMinutes) {
+    db.session.update({ where: { id: session.id }, data: { lastSeenAt: new Date() } }).catch(() => undefined);
+  }
   const user = await db.user.findUnique({ where: { id: session.userId } });
   if (!user || user.status === "DELETED") return null;
   return { sessionId: session.id, userId: session.userId, activeWsId: session.activeWsId, expiresAt: session.expiresAt };

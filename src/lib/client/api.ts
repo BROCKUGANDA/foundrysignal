@@ -73,6 +73,19 @@ export type AccountState = {
   workspaces: Array<{ id: string; name: string; role: string; kind: string }>;
 };
 
+export type SessionItem = {
+  id: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  activeWsId: string | null;
+  current: boolean;
+};
+export type SessionList = {
+  sessions: SessionItem[];
+  currentId: string;
+};
+
 export type Capabilities = {
   githubCollection: { available: boolean; level: string; requiredEnv: string[] };
   solanaOnchain: { available: boolean; level: string; requiredEnv: string[]; upgrade?: string };

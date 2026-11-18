@@ -201,3 +201,61 @@ export async function updateAccount(userId: string, input: unknown) {
   });
   return getAccountState(userId);
 }
+
+/* ─── Session management ─────────────────────────────────────────── */
+
+export interface SessionView {
+  id: string;
+  createdAt: Date;
+  lastSeenAt: Date;
+  expiresAt: Date;
+  activeWsId: string | null;
+  /** True for the session issuing this request (if identifiable). */
+  current: boolean;
+}
+
+/**
+ * Lists this user's active (unrevoked, unexpired) sessions. Never leaks the
+ * token hash; mint-time device data is not stored, so display is time-based
+ * and honest. `currentId` is the id of the session issuing the request.
+ */
+export async function listSessions(userId: string, currentId?: string): Promise<SessionView[]> {
+  const now = new Date();
+  const sessions = await db.session.findMany({
+    where: { userId, revokedAt: null, expiresAt: { gt: now } },
+    orderBy: { lastSeenAt: "desc" },
+  });
+  return sessions.map((s) => ({
+    id: s.id,
+    createdAt: s.createdAt,
+    lastSeenAt: s.lastSeenAt,
+    expiresAt: s.expiresAt,
+    activeWsId: s.activeWsId,
+    current: currentId !== undefined && s.id === currentId,
+  }));
+}
+
+/** Revokes one session owned by the user. Returns false when not found. */
+export async function revokeSession(userId: string, sessionId: string): Promise<boolean> {
+  const res = await db.session.updateMany({
+    where: { id: sessionId, userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  return res.count > 0;
+}
+
+/**
+ * Revokes every session of the user except the current one (or all when
+ * `exceptCurrent` is false). Returns the count of sessions revoked.
+ */
+export async function revokeOtherSessions(
+  userId: string,
+  currentId?: string,
+  exceptCurrent = true,
+): Promise<number> {
+  const where = exceptCurrent && currentId
+    ? { userId, id: { not: currentId }, revokedAt: null }
+    : { userId, revokedAt: null };
+  const res = await db.session.updateMany({ where, data: { revokedAt: new Date() } });
+  return res.count;
+}
