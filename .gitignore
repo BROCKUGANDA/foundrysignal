@@ -61,3 +61,5 @@ test-fs.db
 *.log
 prisma/db/
 _vc.mjs
+# platform scripts
+.zscripts/
