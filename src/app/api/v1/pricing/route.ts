@@ -8,13 +8,19 @@ import { listActivePlans } from "@/lib/domain/billing/plans";
  */
 export const GET = handler(async ({ requestId }) => {
   const plans = await listActivePlans();
+  const provider = process.env.BILLING_PROVIDER?.trim();
+  const { getCheckoutConfig } = await import("@/lib/domain/billing/crypto");
+  const checkout = getCheckoutConfig();
+  const purchasingAvailable = !!provider && checkout.configured;
   return {
     payload: ok(
       {
         plans,
-        purchasingAvailable: !!process.env.BILLING_PROVIDER,
-        note: process.env.BILLING_PROVIDER
-          ? "Self-serve checkout is configured."
+        purchasingAvailable,
+        checkoutProvider: provider ?? null,
+        missingEnv: purchasingAvailable ? [] : [...(provider ? [] : ["BILLING_PROVIDER"]), ...checkout.missingEnv],
+        note: purchasingAvailable
+          ? "Self-serve USDC checkout is configured."
           : "Plans are published for transparency; checkout opens once a billing provider is configured. Contact us for Team and Enterprise in the meantime.",
       },
       requestId

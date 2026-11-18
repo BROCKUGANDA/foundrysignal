@@ -10,8 +10,18 @@ export async function register() {
   // handlers exist by referencing the modules.
   await import("@/lib/jobs/collectors");
   await import("@/lib/jobs/handlers");
+  await import("@/lib/domain/billing/lifecycle");
   void registerJob; // imported for clarity; registration happens in module init
   startWorker();
+
+  // Billing lifecycle: schedule the first daily sweep (expiry → PAST_DUE,
+  // renewal reminders). Deferred — never blocks startup.
+  try {
+    const { ensureBillingSweepScheduled } = await import("@/lib/domain/billing/lifecycle");
+    await ensureBillingSweepScheduled();
+  } catch (err) {
+    console.error(JSON.stringify({ level: "error", component: "instrumentation", message: `Billing sweep scheduling deferred: ${String(err)}` }));
+  }
 
   // Bootstrap platform governance — never throws past startup.
   try {
