@@ -14,33 +14,117 @@ jobs:
     name: Deploy to VPS (self-hosted)
     runs-on: [self-hosted, linux]
     environment: production
+    env:
+      APP_DIR: /opt/foundrysignal
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: latest }
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Materialize runtime env (from GitHub secrets)
+        run: |
+          umask 077
+          {
+            echo "NODE_ENV=production"
+            echo "NEXT_TELEMETRY_DISABLED=1"
+            echo "DATABASE_URL=${DATABASE_URL:?DATABASE_URL secret required}"
+            echo "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}"
+            echo "ALLOWED_ORIGINS=${ALLOWED_ORIGINS}"
+            echo "TRUSTED_PROXIES=${TRUSTED_PROXIES}"
+            echo "ADMIN_BOOTSTRAP_EMAIL=${ADMIN_BOOTSTRAP_EMAIL}"
+            echo "EMAIL_FROM=${EMAIL_FROM}"
+            echo "RESEND_API_KEY=${RESEND_API_KEY}"
+            echo "GITHUB_TOKEN=${GITHUB_TOKEN_COLLECTOR}"
+            echo "SOLANA_RPC_URL=${SOLANA_RPC_URL}"
+            echo "HELIUS_API_KEY=${HELIUS_API_KEY}"
+            echo "PAYOUT_WALLET=${PAYOUT_WALLET}"
+            echo "PAYOUT_WALLET_EVM=${PAYOUT_WALLET_EVM}"
+            echo "USDC_MINT=${USDC_MINT}"
+            echo "BILLING_PROVIDER=${BILLING_PROVIDER}"
+            echo "TRADING_ENABLED=false"
+          } > "$RUNNER_TEMP/foundrysignal.env"
+          sudo mkdir -p /etc/foundrysignal
+          sudo mv "$RUNNER_TEMP/foundrysignal.env" /etc/foundrysignal/foundrysignal.env
+          sudo chmod 600 /etc/foundrysignal/foundrysignal.env
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
+          TRUSTED_PROXIES: ${{ secrets.TRUSTED_PROXIES }}
+          ADMIN_BOOTSTRAP_EMAIL: ${{ secrets.ADMIN_BOOTSTRAP_EMAIL }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GITHUB_TOKEN_COLLECTOR: ${{ secrets.GITHUB_COLLECTOR_TOKEN }}
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+          HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
+          PAYOUT_WALLET: ${{ secrets.PAYOUT_WALLET }}
+          PAYOUT_WALLET_EVM: ${{ secrets.PAYOUT_WALLET_EVM }}
+          USDC_MINT: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+          BILLING_PROVIDER: ${{ secrets.BILLING_PROVIDER }}
+
+      - name: Install systemd unit (idempotent)
+        run: |
+          if [ ! -f /etc/systemd/system/foundrysignal.service ]; then
+            printf '%s\n' \
+              '[Unit]' \
+              'Description=FoundrySignal (Next.js standalone)' \
+              'After=network.target postgresql.service' \
+              '' \
+              '[Service]' \
+              'Type=simple' \
+              'EnvironmentFile=/etc/foundrysignal/foundrysignal.env' \
+              'WorkingDirectory='"${APP_DIR}" \
+              'ExecStart='"$(command -v bun)"' .next/standalone/server.js' \
+              'Restart=always' \
+              'RestartSec=5' \
+              'User=foundrysignal' \
+              '' \
+              '[Install]' \
+              'WantedBy=multi-user.target' \
+              | sudo tee /etc/systemd/system/foundrysignal.service >/dev/null
+            sudo systemctl daemon-reload
+            sudo systemctl enable foundrysignal
+          fi
+
+      - name: Sync source to APP_DIR
+        run: |
+          sudo mkdir -p "$APP_DIR"
+          sudo rsync -a --delete --exclude node_modules --exclude .next --exclude .git ./ "$APP_DIR/"
+          cd "$APP_DIR" && sudo -E bun install --frozen-lockfile
+
       - name: Apply database migrations
+        working-directory: /opt/foundrysignal
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: bun x prisma migrate deploy
+
       - name: Build
-        run: bun run build
-      - name: Restart service
+        working-directory: /opt/foundrysignal
+        run: sudo -E bun run build
+
+      - name: Start / restart service
         run: |
-          if systemctl is-active --quiet foundrysignal 2>/dev/null; then
-            sudo systemctl restart foundrysignal
-          elif command -v pm2 >/dev/null 2>&1; then
-            pm2 restart foundrysignal || pm2 start bun --name foundrysignal -- .next/standalone/server.js
-          else
-            echo "No service manager found; build completed only." >&2
-          fi
+          sudo chown -R foundrysignal:foundrysignal "$APP_DIR" || true
+          sudo systemctl restart foundrysignal
+
       - name: Health check
         run: |
+          ok=0
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:3000/api/v1/health >/dev/null; then
-              echo "healthy"; exit 0
-            fi
+            if curl -fsS http://127.0.0.1:3000/api/v1/health >/dev/null; then ok=1; break; fi
             sleep 2
           done
-          echo "health check failed"; exit 1
+          if [ "$ok" != 1 ]; then
+            echo "health check failed"; sudo journalctl -u foundrysignal -n 50 --no-pager || true
+            exit 1
+          fi
+          echo "healthy"
+
+      - name: Billing readiness check
+        run: |
+          status=$(curl -fsS http://127.0.0.1:3000/api/v1/billing/status || true)
+          echo "$status"
+          echo "$status" | grep -q '"configured":true' || {
+            echo "USDC checkout NOT configured — earning path is offline"; exit 1; }
