@@ -13,7 +13,7 @@ concurrency:
 jobs:
   quality:
     name: Typecheck / Lint / Test / Build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     services:
       postgres:
         image: postgres:18
@@ -47,7 +47,7 @@ jobs:
 
   audit:
     name: Dependency & security audit
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

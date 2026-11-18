@@ -20,4 +20,9 @@
 			header_up X-Real-IP {remote_host}
 		}
 	}
+
+# Production (Cloudflare in front): trust Cloudflare IPs so X-Forwarded-* is honored.
+# See https://www.cloudflare.com/ips/
+# (Enable by replacing the :81 block above with your domain and adding
+#  `trusted_proxies` to the reverse_proxy block in production.)
 }

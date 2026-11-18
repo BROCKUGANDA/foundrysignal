@@ -1,0 +1,46 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to VPS (self-hosted)
+    runs-on: [self-hosted, linux]
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bun x prisma migrate deploy
+      - name: Build
+        run: bun run build
+      - name: Restart service
+        run: |
+          if systemctl is-active --quiet foundrysignal 2>/dev/null; then
+            sudo systemctl restart foundrysignal
+          elif command -v pm2 >/dev/null 2>&1; then
+            pm2 restart foundrysignal || pm2 start bun --name foundrysignal -- .next/standalone/server.js
+          else
+            echo "No service manager found; build completed only." >&2
+          fi
+      - name: Health check
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/v1/health >/dev/null; then
+              echo "healthy"; exit 0
+            fi
+            sleep 2
+          done
+          echo "health check failed"; exit 1
