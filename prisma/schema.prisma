@@ -23,6 +23,7 @@ model User {
   platformRole String    @default("USER") // USER | MODERATOR | PLATFORM_ADMIN
   userType     String    @default("VENTURE_INVESTOR") // registration persona; never implies a role
   emailVerifiedAt        DateTime?
+  onboardedAt    DateTime? // first-run onboarding completion; returning users never see it
   status       String    @default("ACTIVE") // ACTIVE | DELETED
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

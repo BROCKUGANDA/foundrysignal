@@ -18,6 +18,7 @@ import { NotFoundView } from "@/components/fs/not-found-view";
 import { BootSplash, LoadingState, OfflineState } from "@/components/fs";
 import { useWalletAvailability } from "@/lib/client/wallet";
 import { TradingView } from "@/components/fs/trading-surface-view";
+import { OnboardingView } from "@/components/fs/onboarding-view";
 
 // Heavy views load on demand — keeps the first bundle to the shell plus the
 // two views a new session can reach (auth, discover).
@@ -122,6 +123,17 @@ function FoundrySignalRouter() {
     if (match) syncRoute(match.section, match.params);
   }, [match, syncRoute]);
 
+  // Browser back/forward must re-derive view state from the URL (the source of
+  // truth), not just swap history entries silently.
+  React.useEffect(() => {
+    const onPop = () => {
+      const m = pathToSection(window.location.pathname, window.location.search.slice(1));
+      if (m) syncRoute(m.section, m.params);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [syncRoute]);
+
   React.useEffect(() => {
     if (!match) return;
     document.title =
@@ -164,6 +176,9 @@ function FoundrySignalRouter() {
     window.addEventListener("fs:unauthorized", onUnauthorized);
     return () => window.removeEventListener("fs:unauthorized", onUnauthorized);
   }, [qc, navigate]);
+
+  const [onboardingDismissed, setOnboardingDismissed] = React.useState(false);
+  const showOnboarding = Boolean(account) && account?.onboarded === false && !onboardingDismissed;
 
   const onAuthenticated = React.useCallback(
     (next: AccountState) => {
@@ -208,6 +223,15 @@ function FoundrySignalRouter() {
     <>
       <OfflineBanner />
       <AppShell account={account} onLogout={onLogout} alertCount={0}>
+        {showOnboarding && account ? (
+          <OnboardingView
+            userType={account.userType}
+            onComplete={() => {
+              setOnboardingDismissed(true);
+              setAccount((prev) => (prev ? { ...prev, onboarded: true } : prev));
+            }}
+          />
+        ) : null}
         {(match.section === "discover" ||
           match.section === "home" ||
           (match.section === "auth" && account)) && (

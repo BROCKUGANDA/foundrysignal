@@ -361,6 +361,7 @@ export async function listVentures(params: ListVenturesParams) {
     category: v.category,
     ecosystem: v.ecosystem,
     status: v.status,
+    source: v.source,
     website: v.website,
     repoCount: v._count.repositories,
     tokenCount: v._count.tokenAssets,

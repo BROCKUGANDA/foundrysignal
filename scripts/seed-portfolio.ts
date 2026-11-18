@@ -80,7 +80,7 @@ const SEEDS: VentureSeed[] = [
 async function ensureVenture(s: VentureSeed) {
   const venture = await db.venture.upsert({
     where: { slug: s.slug },
-    create: { slug: s.slug, name: s.name, tagline: s.tagline, description: s.description, category: s.category, ecosystem: "SOLANA", status: "ACTIVE", visibility: "PUBLIC", website: s.website, websiteKey: s.websiteKey },
+    create: { slug: s.slug, name: s.name, tagline: s.tagline, description: s.description, category: s.category, ecosystem: "SOLANA", status: "ACTIVE", visibility: "PUBLIC", source: "ADMIN_ENTRY", website: s.website, websiteKey: s.websiteKey },
     update: { name: s.name, tagline: s.tagline, description: s.description, category: s.category, website: s.website, websiteKey: s.websiteKey, status: "ACTIVE" },
   });
   await db.ventureIdentity.upsert({

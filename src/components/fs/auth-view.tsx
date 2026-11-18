@@ -1,8 +1,7 @@
 "use client";
 
-// Auth view — registration, login, logout. Real sessions; email-verification
-// and password-reset generate tokens but delivery shows EMAIL_UNAVAILABLE
-// honestly (no email provider configured).
+// Auth view — registration, login, logout. Real sessions; account data is
+// stored hashed and sessions are server-side and revocable.
 
 import React, { useState } from "react";
 import { Button, Card, CardContent, Field, Glyph, Icon, Input, LogoLockup, Select, toast } from "@/components/fs";
@@ -55,7 +54,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <div className="flex h-14 items-center px-4 sm:px-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate("home")}>
+        <Button variant="ghost" size="sm" onClick={() => { if (window.history.length > 1) window.history.back(); else navigate("home"); }}>
           <Icon name="chevronRight" size={13} className="rotate-180" />
           Back
         </Button>
@@ -155,17 +154,6 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
               </form>
             </CardContent>
           </Card>
-
-          <div className="flex items-start gap-2.5 rounded-lg border border-[var(--fs-border)] bg-surface-2 p-4">
-            <span aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--fs-info-fg)]">
-              <Glyph name="risk" size={14} />
-            </span>
-            <p className="text-2xs leading-relaxed text-ink-muted">
-              Email delivery is configured via Resend for this deployment; verification/reset delivery depends on enabled auth
-              flows and provider domain setup. OAuth client credentials and an MFA encryption key are configured in the environment
-              (see capability registry for live status and any enablement steps such as callback registration).
-            </p>
-          </div>
         </div>
       </main>
     </div>

@@ -51,16 +51,6 @@ export const GET = handler(async ({ requestId }) => {
           : "USDC checkout not configured — checkout surfaces an explicit configuration-required state; no payments are simulated.",
       };
     })(),
-    email: (() => {
-      const resend = !!process.env.RESEND_API_KEY;
-      const smtp = !!process.env.SMTP_URL;
-      return {
-        available: resend || smtp,
-        level: resend ? "CONFIGURED_RESEND" : smtp ? "CONFIGURED_SMTP" : "NOT_CONFIGURED",
-        requiredEnv: resend || smtp ? [] : ["RESEND_API_KEY"],
-        from: process.env.EMAIL_FROM ?? null,
-      };
-    })(),
     aiResearch: { available: true, level: "REAL_LLM", requiredEnv: [] },
     heliusIndexed: { available: !!process.env.HELIUS_API_KEY, level: process.env.HELIUS_API_KEY ? "CONFIGURED" : "NOT_CONFIGURED", requiredEnv: process.env.HELIUS_API_KEY ? [] : ["HELIUS_API_KEY"] },
     oauth: (() => {
@@ -100,7 +90,6 @@ export const GET = handler(async ({ requestId }) => {
           githubCollection: { available: capabilities.githubCollection.available },
           solanaOnchain: { available: capabilities.solanaOnchain.available },
           marketData: { available: capabilities.marketData.available },
-          email: { available: capabilities.email.available },
         },
         requestId
       ),

@@ -23,6 +23,7 @@ export const RegisterSchema = z.object({
 export const UpdateAccountSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   userType: z.enum(USER_TYPES).optional(),
+  onboarded: z.boolean().optional(),
 });
 
 export const LoginSchema = z.object({
@@ -154,6 +155,7 @@ export async function getAccountState(userId: string) {
     platformRole: user.platformRole,
     userType: user.userType,
     emailVerified: !!user.emailVerifiedAt,
+    onboarded: !!user.onboardedAt,
     workspaces: memberships.map((m) => ({
       id: m.workspace.id,
       name: m.workspace.name,
@@ -175,9 +177,18 @@ export async function requestAccountDeletion(userId: string) {
  * role fields are stripped by zod and never persisted from client input.
  */
 export async function updateAccount(userId: string, input: unknown) {
-  const patch = UpdateAccountSchema.parse(input);
+  const parsed = UpdateAccountSchema.parse(input);
+  const { onboarded, ...rest } = parsed;
+  // `onboarded: true` stamps onboardedAt (idempotent: only stamps once).
+  const patch: { name?: string; userType?: (typeof USER_TYPES)[number]; onboardedAt?: Date } = { ...rest };
+  if (onboarded === true) patch.onboardedAt = new Date();
   if (Object.keys(patch).length === 0) {
     throw new ApiHttpError("VALIDATION_FAILED", "No editable fields supplied.", false);
+  }
+  if (patch.onboardedAt) {
+    // Skip the write if the user already completed onboarding.
+    const existing = await db.user.findUnique({ where: { id: userId }, select: { onboardedAt: true } });
+    if (existing?.onboardedAt) delete patch.onboardedAt;
   }
   const user = await db.user.update({ where: { id: userId }, data: patch });
   await recordAudit({

@@ -66,6 +66,8 @@ export type AccountState = {
   platformRole: string;
   userType: string;
   emailVerified: boolean;
+  /** True once the first-run onboarding has been completed or skipped. */
+  onboarded: boolean;
   workspaceRole: string;
   activeWorkspaceId: string;
   workspaces: Array<{ id: string; name: string; role: string; kind: string }>;
@@ -104,6 +106,8 @@ export type VentureSummary = {
   category: string;
   ecosystem: string;
   status: string;
+  /** USER_SUBMITTED | ADMIN_ENTRY (curated catalog) | ISSUER_RESPONSE */
+  source: string;
   website: string | null;
   repoCount: number;
   tokenCount: number;

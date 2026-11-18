@@ -34,6 +34,8 @@ export interface VentureCardData {
   ecosystem: string;
   /** ACTIVE | ... — anything not ACTIVE renders as a warning chip. */
   status: string;
+  /** USER_SUBMITTED | ADMIN_ENTRY (curated catalog) | ISSUER_RESPONSE */
+  source?: string;
   website: string | null;
   repoCount: number;
   tokenCount: number;
@@ -125,6 +127,11 @@ export function VentureCard({
             {venture.status !== "ACTIVE" ? (
               <Badge tone="warning" size="sm" dot>
                 {venture.status}
+              </Badge>
+            ) : null}
+            {venture.source === "ADMIN_ENTRY" ? (
+              <Badge tone="info" size="sm" title="Curated catalog entry — evidence collected from public sources by FoundrySignal, not a user submission">
+                Catalog
               </Badge>
             ) : null}
           </div>
