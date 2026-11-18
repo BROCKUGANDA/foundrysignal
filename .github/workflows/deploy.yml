@@ -111,7 +111,7 @@ jobs:
       - name: Billing readiness check
         run: |
           port=$(systemctl cat ${SERVICE} | grep -oP 'PORT=\K[0-9]+' | head -1); port=${port:-3000}
-          status=$(curl -fsS "http://127.0.0.1:${port}/api/v1/billing/status" || curl -fsS "http://127.0.0.1:3000/api/v1/billing/status" || true)
-          echo "$status"
-          echo "$status" | grep -q '"configured":true' || {
+          status=$(curl -fsS "http://127.0.0.1:${port}/api/v1/pricing" || curl -fsS "http://127.0.0.1:3000/api/v1/pricing" || true)
+          echo "$status" | head -c 400; echo
+          echo "$status" | grep -q '"purchasingAvailable":true' || {
             echo "USDC checkout NOT configured — earning path is offline"; exit 1; }
