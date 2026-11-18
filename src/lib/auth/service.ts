@@ -104,6 +104,12 @@ export async function registerUser(input: unknown, ip: string) {
   });
   await db.membership.create({ data: { workspaceId: ws.id, userId: user.id, role: "OWNER" } });
   await createSession(user.id, ws.id);
+  // Fire-and-forget: verification email is best-effort, never blocks registration.
+  try {
+    await requestEmailVerification(user.id);
+  } catch {
+    // delivery failure must not fail registration
+  }
   await recordAudit({ actorId: user.id, action: "AUTH_REGISTER", targetType: "USER", targetId: user.id, summary: `Account registered (${userType})`, metadata: { ip, userType } });
   return { userId: user.id, workspaceId: ws.id, userType };
 }
@@ -122,7 +128,7 @@ export async function loginUser(input: unknown, ip: string) {
   }
   const valid =
     user && user.status === "ACTIVE"
-      ? await verifyPassword(password, user.passwordHash)
+      ? await verifyPassword(password, user.passwordHash).catch(() => false)
       : await timingEqualizedVerify(password);
   if (!user || !valid) {
     recordFailedLogin(email, ip);
@@ -258,4 +264,61 @@ export async function revokeOtherSessions(
     : { userId, revokedAt: null };
   const res = await db.session.updateMany({ where, data: { revokedAt: new Date() } });
   return res.count;
+}
+
+/* ─── Email verification & password reset ─────────────────────────── */
+
+export async function requestEmailVerification(userId: string): Promise<{ delivered: boolean; reason?: string }> {
+  const { issueToken, sendVerificationEmail } = await import("@/lib/domain/email/service");
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) throw new ApiHttpError("NOT_FOUND", "Account not found.", false);
+  if (user.emailVerifiedAt) return { delivered: false, reason: "ALREADY_VERIFIED" };
+  const token = await issueToken({ email: user.email, kind: "VERIFY_EMAIL", userId: user.id, ttlMinutes: 60 * 24 });
+  const result = await sendVerificationEmail(user.email, token);
+  return { delivered: result.delivered, reason: result.reason };
+}
+
+export async function verifyEmailToken(token: string): Promise<{ ok: boolean; reason?: string }> {
+  const { consumeToken } = await import("@/lib/domain/email/service");
+  const res = await consumeToken({ token, kind: "VERIFY_EMAIL" });
+  if (!res.ok) return { ok: false, reason: res.reason };
+  await db.user.update({ where: { emailHash: emailHash(res.email) }, data: { emailVerifiedAt: new Date() } });
+  await recordAudit({ actorId: res.userId ?? "", action: "AUTH_EMAIL_VERIFIED", targetType: "USER", targetId: res.userId ?? "", summary: "Email verified" });
+  return { ok: true };
+}
+
+export async function requestPasswordReset(email: string): Promise<{ delivered: boolean; reason?: string }> {
+  const { issueToken, sendPasswordResetEmail } = await import("@/lib/domain/email/service");
+  const eHash = emailHash(email);
+  const user = await db.user.findUnique({ where: { emailHash: eHash } });
+  // Do not leak account existence — always behave as if the email was sent.
+  if (!user) return { delivered: true };
+  const token = await issueToken({ email: user.email, kind: "RESET_PASSWORD", userId: user.id, ttlMinutes: 30 });
+  const result = await sendPasswordResetEmail(user.email, token);
+  return { delivered: result.delivered, reason: result.reason };
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ ok: boolean; reason?: string }> {
+  const { consumeToken } = await import("@/lib/domain/email/service");
+  const parsed = z.string().min(10).max(200).safeParse(newPassword);
+  if (!parsed.success) throw new ApiHttpError("VALIDATION_FAILED", "Password must be at least 10 characters.", false);
+  const res = await consumeToken({ token, kind: "RESET_PASSWORD" });
+  if (!res.ok) return { ok: false, reason: res.reason };
+  await db.user.update({ where: { emailHash: emailHash(res.email) }, data: { passwordHash: await hashPassword(parsed.data) } });
+  // Revoke all existing sessions after a password reset — attacker sessions must die.
+  if (res.userId) await db.session.updateMany({ where: { userId: res.userId }, data: { revokedAt: new Date() } });
+  await recordAudit({ actorId: res.userId ?? "", action: "AUTH_PASSWORD_RESET", targetType: "USER", targetId: res.userId ?? "", summary: "Password reset via emailed token" });
+  return { ok: true };
+}
+
+export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ ok: boolean; reason?: string }> {
+  const parsed = z.string().min(10).max(200).safeParse(newPassword);
+  if (!parsed.success) throw new ApiHttpError("VALIDATION_FAILED", "Password must be at least 10 characters.", false);
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) throw new ApiHttpError("NOT_FOUND", "Account not found.", false);
+  const valid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!valid) return { ok: false, reason: "CURRENT_PASSWORD_INCORRECT" };
+  await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(parsed.data) } });
+  await recordAudit({ actorId: userId, action: "AUTH_PASSWORD_CHANGED", targetType: "USER", targetId: userId, summary: "Password changed from settings" });
+  return { ok: true };
 }
