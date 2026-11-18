@@ -1,0 +1,9 @@
+# Default owners
+*       @BROCKUGANDA
+
+# Security-sensitive paths require owner review
+/src/lib/auth/        @BROCKUGANDA
+/src/lib/domain/billing/ @BROCKUGANDA
+/src/middleware.ts    @BROCKUGANDA
+/prisma/              @BROCKUGANDA
+/.github/workflows/   @BROCKUGANDA
