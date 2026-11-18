@@ -1,0 +1,50 @@
+name: Auto-promote
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [dev, staging]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    name: Promote to next environment
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Determine target branch
+        id: target
+        run: |
+          src="${{ github.event.workflow_run.head_branch }}"
+          if [ "$src" = "dev" ]; then echo "to=staging" >> $GITHUB_OUTPUT; fi
+          if [ "$src" = "staging" ]; then echo "to=main" >> $GITHUB_OUTPUT; fi
+      - name: Create promotion PR if none exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          src="${{ github.event.workflow_run.head_branch }}"
+          to="${{ steps.target.outputs.to }}"
+          [ -z "$to" ] && exit 0
+          existing=$(gh pr list --base "$to" --head "$src" --state open --json number -q '.[0].number')
+          if [ -z "$existing" ]; then
+            gh pr create --base "$to" --head "$src" \
+              --title "chore(promote): $src -> $to" \
+              --body "Automated promotion after successful CI on \`$src\`." || true
+          fi
+      - name: Enable auto-merge on open promotion PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          src="${{ github.event.workflow_run.head_branch }}"
+          to="${{ steps.target.outputs.to }}"
+          [ -z "$to" ] && exit 0
+          pr=$(gh pr list --base "$to" --head "$src" --state open --json number -q '.[0].number')
+          [ -z "$pr" ] && exit 0
+          gh pr merge "$pr" --auto --squash || true

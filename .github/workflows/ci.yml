@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, staging, main]
+  push:
+    branches: [dev, staging, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Typecheck / Lint / Test / Build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: foundrysignal
+          POSTGRES_PASSWORD: fs_local_2026
+          POSTGRES_DB: foundrysignal
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U foundrysignal"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://foundrysignal:fs_local_2026@127.0.0.1:5433/foundrysignal
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile
+      - run: bun x prisma migrate deploy
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun test
+      - run: bun run build
+      - name: Secret scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+  audit:
+    name: Dependency & security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile
+      - run: bun audit || true
+      - name: Check for tracked secrets
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$|\.db$' ; then
+            echo "Sensitive files tracked"; exit 1
+          fi

@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.git
+.env*
+!.env.example
+db/custom.db
+upload
+tool-results
+*.log
+.zscripts

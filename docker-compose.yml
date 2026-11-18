@@ -1,0 +1,40 @@
+# Staging / production-like local orchestration.
+# Usage: docker compose up -d
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: foundrysignal
+      POSTGRES_PASSWORD: fs_local_2026
+      POSTGRES_DB: foundrysignal
+    ports: ["5433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U foundrysignal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://foundrysignal:fs_local_2026@db:5432/foundrysignal
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    ports: ["3000:3000"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
