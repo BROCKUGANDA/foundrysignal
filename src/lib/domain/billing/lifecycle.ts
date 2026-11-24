@@ -131,11 +131,26 @@ registerJob("billing_intent_watcher", async (ctx) => {
     data: { status: "EXPIRED" },
   });
 
+  // Rotate the batch window each tick so unpaid older intents cannot starve
+  // newer ones. The window wraps around so every eligible intent is reached.
+  const eligible = { status: "PENDING", expiresAt: { gte: now } } as const;
+  const orderBy = [{ createdAt: "asc" as const }, { id: "asc" as const }];
+  const eligibleCount = await db.cryptoPaymentIntent.count({ where: eligible });
+  const offset = eligibleCount > 0 ? (Math.floor(Date.now() / WATCH_INTERVAL_MS) * WATCH_BATCH) % eligibleCount : 0;
   const pending = await db.cryptoPaymentIntent.findMany({
-    where: { status: "PENDING", expiresAt: { gte: now } },
-    orderBy: { createdAt: "asc" },
+    where: eligible,
+    orderBy,
+    skip: offset,
     take: WATCH_BATCH,
   });
+  if (offset > 0 && pending.length < WATCH_BATCH) {
+    const wrapped = await db.cryptoPaymentIntent.findMany({
+      where: eligible,
+      orderBy,
+      take: Math.min(WATCH_BATCH - pending.length, offset),
+    });
+    pending.push(...wrapped);
+  }
 
   let confirmed = 0;
   for (const intent of pending) {
