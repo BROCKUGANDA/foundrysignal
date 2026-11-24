@@ -33,7 +33,7 @@ jobs:
       # it after each test, so an unset key makes all but the first test fail.
       MFA_ENCRYPTION_KEY: test-mfa-key-32-bytes-derived-by-sha256
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: "1.4.5" }
       - run: bun install --frozen-lockfile
@@ -58,7 +58,7 @@ jobs:
     name: Dependency & security audit
     runs-on: [self-hosted, linux]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: "1.4.5" }
       - run: bun install --frozen-lockfile
