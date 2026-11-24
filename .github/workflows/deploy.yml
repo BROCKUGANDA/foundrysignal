@@ -19,8 +19,12 @@ jobs:
       SERVICE: foundrysignal
     steps:
       - uses: actions/checkout@v4
+      # Pin the version that is already installed on the VPS. `latest` forces
+      # setup-bun to re-download and copy the binary on every run, which fails
+      # with ETXTBSY while other app processes have /home/ubuntu/.bun/bin/bun
+      # mapped. Bump deliberately when a Bun upgrade is intended.
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with: { bun-version: "1.4.5" }
 
       - name: Materialize runtime env (from GitHub secrets)
         run: |

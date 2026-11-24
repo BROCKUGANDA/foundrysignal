@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with: { bun-version: "1.4.5" }
       - run: bun install --frozen-lockfile
       - run: bun x prisma migrate deploy
       - run: bun x prisma generate
@@ -56,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with: { bun-version: "1.4.5" }
       - run: bun install --frozen-lockfile
       - run: bun audit || true
       - name: Check for tracked secrets
