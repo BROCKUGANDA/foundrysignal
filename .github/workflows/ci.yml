@@ -21,31 +21,52 @@ jobs:
           POSTGRES_USER: foundrysignal
           POSTGRES_PASSWORD: fs_local_2026
           POSTGRES_DB: foundrysignal
-        ports: ["5433:5432"]
+        # 5433/55433/55434 are occupied on the self-hosted VPS by other projects.
+        ports: ["55435:5432"]
         options: >-
           --health-cmd "pg_isready -U foundrysignal"
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
-      DATABASE_URL: postgresql://foundrysignal:fs_local_2026@127.0.0.1:5433/foundrysignal
+      DATABASE_URL: postgresql://foundrysignal:fs_local_2026@127.0.0.1:55435/foundrysignal
       NODE_ENV: test
+      # Test-only key: mfa.test.ts snapshots the original env value and restores
+      # it after each test, so an unset key makes all but the first test fail.
+      MFA_ENCRYPTION_KEY: test-mfa-key-32-bytes-derived-by-sha256
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with: { bun-version: "1.4.5" }
       - run: bun install --frozen-lockfile
       - run: bun x prisma migrate deploy
       - run: bun x prisma generate
       - run: bun run typecheck
       - run: bun run lint
-      - run: bun test
+      # --isolate gives every test file a fresh module registry. Without it,
+      # a global mock.module() in one file leaks into every other file in the
+      # same process (a real failure we hit in the checkout boundary tests).
+      - run: bun run test
       - run: bun run build
       - name: Secret scan
         if: github.event_name == 'pull_request'
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+        # The self-hosted runner's Docker daemon is denied access to ghcr.io,
+        # so the Docker-backed action cannot start. Run the same official
+        # engine from its release binary instead, with explicit PR SHAs.
+        run: |
+          set -euo pipefail
+          version=3.100.1
+          case "$(uname -m)" in
+            x86_64) arch=amd64 ;;
+            aarch64|arm64) arch=arm64 ;;
+            *) echo "unsupported runner architecture"; exit 1 ;;
+          esac
+          asset="trufflehog_${version}_linux_${arch}.tar.gz"
+          curl -fsSL "https://github.com/trufflesecurity/trufflehog/releases/download/v${version}/${asset}" \
+            -o "$RUNNER_TEMP/trufflehog.tar.gz"
+          tar -xzf "$RUNNER_TEMP/trufflehog.tar.gz" -C "$RUNNER_TEMP" trufflehog
+          "$RUNNER_TEMP/trufflehog" git file://. \
+            --since-commit "${{ github.event.pull_request.base.sha }}" \
+            --branch "${{ github.event.pull_request.head.sha }}" \
+            --fail --no-update
 
   audit:
     name: Dependency & security audit
@@ -53,7 +74,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with: { bun-version: "1.4.5" }
       - run: bun install --frozen-lockfile
       - run: bun audit || true
       - name: Check for tracked secrets

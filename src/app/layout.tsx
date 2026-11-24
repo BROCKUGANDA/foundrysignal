@@ -8,8 +8,19 @@ import "@fontsource/space-grotesk/600.css";
 import "@fontsource/space-grotesk/700.css";
 import "./globals.css";
 import { Providers } from "@/components/fs/providers";
-import { THEME_BOOTSTRAP } from "@/components/fs/theme";
 import { SITE, SITE_URL } from "@/lib/seo";
+
+// Keep this literal server-owned: a client-module reference here can suspend
+// hydration inside <head> while its JavaScript chunk is still loading.
+const THEME_BOOTSTRAP = `(function(){try{
+var d=document.documentElement;
+var m=localStorage.getItem("fs-theme")||"system";
+var t=m==="system"?(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):m;
+d.classList.remove("dark","light");d.classList.add(t);
+d.dataset.themeMode=m;
+var mo=localStorage.getItem("fs-motion");
+if(mo==="reduced")d.dataset.motion="reduced";
+}catch(e){}})();`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

@@ -39,6 +39,7 @@ export function generateStaticParams() {
     { fs: ["faq"] },
     { fs: ["terms"] },
     { fs: ["security"] },
+    { fs: ["accessibility"] },
     { fs: ["auth"] },
     { fs: ["discover"] },
     { fs: ["research"] },

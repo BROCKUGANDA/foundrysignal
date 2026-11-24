@@ -19,8 +19,12 @@ jobs:
       SERVICE: foundrysignal
     steps:
       - uses: actions/checkout@v4
+      # Pin the version that is already installed on the VPS. `latest` forces
+      # setup-bun to re-download and copy the binary on every run, which fails
+      # with ETXTBSY while other app processes have /home/ubuntu/.bun/bin/bun
+      # mapped. Bump deliberately when a Bun upgrade is intended.
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
+        with: { bun-version: "1.4.5" }
 
       - name: Materialize runtime env (from GitHub secrets)
         run: |
@@ -71,6 +75,17 @@ jobs:
             | sudo tee /etc/systemd/system/${SERVICE}.service.d/env.conf >/dev/null
           sudo systemctl daemon-reload
 
+      # A stale block-storage drop-in used to override WorkingDirectory to an
+      # old release, so deploys built new code but the service kept running the
+      # old one. This later-sorted drop-in wins and binds the service to the
+      # standalone output this workflow just built.
+      - name: Bind service to the freshly built standalone output
+        run: |
+          sudo mkdir -p /etc/systemd/system/${SERVICE}.service.d
+          printf '[Service]\nWorkingDirectory=%s/.next/standalone\n' "$APP_DIR" \
+            | sudo tee /etc/systemd/system/${SERVICE}.service.d/zz-appdir.conf >/dev/null
+          sudo systemctl daemon-reload
+
       - name: Sync source
         run: |
           rsync -a --delete --exclude node_modules --exclude .next --exclude .git --exclude .env ./ "$APP_DIR/"
@@ -111,7 +126,15 @@ jobs:
       - name: Billing readiness check
         run: |
           port=$(systemctl cat ${SERVICE} | grep -oP 'PORT=\K[0-9]+' | head -1); port=${port:-3000}
-          status=$(curl -fsS "http://127.0.0.1:${port}/api/v1/pricing" || curl -fsS "http://127.0.0.1:3000/api/v1/pricing" || true)
+          # The service is restarted immediately before this check; give the
+          # standalone server the same bounded retry window as the health check.
+          status=""
+          ok=0
+          for i in $(seq 1 30); do
+            status=$(curl -fsS "http://127.0.0.1:${port}/api/v1/pricing" 2>/dev/null || true)
+            if echo "$status" | grep -q '"purchasingAvailable":true'; then ok=1; break; fi
+            sleep 2
+          done
           echo "$status" | head -c 400; echo
-          echo "$status" | grep -q '"purchasingAvailable":true' || {
-            echo "USDC checkout NOT configured — earning path is offline"; exit 1; }
+          if [ "$ok" != 1 ]; then
+            echo "USDC checkout NOT configured — earning path is offline"; exit 1; fi

@@ -35,24 +35,6 @@ const STORAGE_KEY = "fs-theme";
 const MOTION_KEY = "fs-motion";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-/* ─── Blocking bootstrap script ─────────────────────────────────────── */
-
-/**
- * Runs before first paint to set the theme class. Must stay dependency-free
- * and defensive: any throw here would leave the page unstyled.
- *
- * Injected by layout.tsx as a raw `<script>` in <head>.
- */
-export const THEME_BOOTSTRAP = `(function(){try{
-var d=document.documentElement;
-var m=localStorage.getItem("${STORAGE_KEY}")||"system";
-var t=m==="system"?(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):m;
-d.classList.remove("dark","light");d.classList.add(t);
-d.dataset.themeMode=m;
-var mo=localStorage.getItem("${MOTION_KEY}");
-if(mo==="reduced")d.dataset.motion="reduced";
-}catch(e){}})();`;
-
 /* ─── Store ─────────────────────────────────────────────────────────── */
 
 interface ThemeState {
@@ -61,7 +43,8 @@ interface ThemeState {
   motionReduced: boolean;
 }
 
-let state: ThemeState = { mode: "system", resolved: "dark", motionReduced: false };
+const SERVER_SNAPSHOT: ThemeState = { mode: "system", resolved: "dark", motionReduced: false };
+let state: ThemeState = SERVER_SNAPSHOT;
 const listeners = new Set<() => void>();
 
 function readStoredMode(): ThemeMode {
@@ -131,7 +114,7 @@ function getSnapshot(): ThemeState {
 }
 
 function getServerSnapshot(): ThemeState {
-  return { mode: "system", resolved: "dark", motionReduced: false };
+  return SERVER_SNAPSHOT;
 }
 
 /* ─── Hook ──────────────────────────────────────────────────────────── */

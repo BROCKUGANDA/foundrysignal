@@ -34,7 +34,7 @@ import { listActivePlans } from "@/lib/domain/billing/plans";
 export type MarketingSection =
   | "home" | "product" | "methodology" | "evidence-explainer" | "ecosystem" | "api"
   | "pricing" | "about" | "contact" | "legal" | "privacy" | "security-disclosure"
-  | "faq" | "legal-terms" | "security";
+  | "faq" | "legal-terms" | "security" | "accessibility";
 
 /** URL path for each marketing section (single source of truth for links/canonicals). */
 export const MARKETING_SECTION_PATHS: Record<MarketingSection, string> = {
@@ -53,6 +53,7 @@ export const MARKETING_SECTION_PATHS: Record<MarketingSection, string> = {
   faq: "/faq",
   "legal-terms": "/terms",
   security: "/security",
+  accessibility: "/accessibility",
 };
 
 interface SectionMeta {
@@ -63,51 +64,51 @@ interface SectionMeta {
 
 export const SECTION_META: Record<MarketingSection, SectionMeta> = {
   home: {
-    title: "FoundrySignal â€” See the builders. Verify the work. Understand the market.",
+    title: "FoundrySignal — See the builders. Verify the work. Understand the market.",
     description: SITE.description,
     keywords: ["venture intelligence", "Solana", "evidence graph", "founder research", "onchain analytics", "GitHub diligence", "Dubai", "UAE"],
   },
   product: {
-    title: "Product â€” venture dossiers, founder & repository intelligence",
+    title: "Product — venture dossiers, founder & repository intelligence",
     description: "A research terminal for early-stage onchain ventures: discovery directory, venture dossiers, founder build passports, repository intelligence and a grounded AI analyst.",
     keywords: ["venture dossier", "founder intelligence", "repository intelligence", "Solana research platform"],
   },
   methodology: {
-    title: "Methodology â€” how data is collected, verified and aged",
+    title: "Methodology — how data is collected, verified and aged",
     description: "How FoundrySignal collects providers' data, classifies evidence deterministically, enforces freshness policies and produces change intelligence. Provenance is the product.",
     keywords: ["evidence verification", "data provenance", "research methodology", "claim integrity"],
   },
   "evidence-explainer": {
-    title: "How evidence works â€” claims, sources and provenance",
+    title: "How evidence works — claims, sources and provenance",
     description: "Claims, immutable source snapshots with SHA-256 hashes, computed verification statuses, disputes and corrections, and AI grounding on the FoundrySignal evidence graph.",
   },
   ecosystem: {
-    title: "Ecosystem â€” Solana-native, provider-agnostic",
+    title: "Ecosystem — Solana-native, provider-agnostic",
     description: "Solana reads via @solana/kit, indexed providers, Jupiter market context, GitHub repository intelligence and the conflict-of-interest register.",
   },
   api: {
-    title: "Research API â€” the venture intelligence graph",
+    title: "Research API — the venture intelligence graph",
     description: "Versioned REST API with a uniform envelope, cursor pagination, typed errors, API keys and plan-driven entitlements for institutional research access.",
   },
   pricing: {
-    title: "Pricing â€” plans for analysts, teams and institutions",
-    description: "FoundrySignal plans: Explorer, Researcher, Professional, Team and Enterprise. Plans are configuration data â€” paid tiers buy capability, never credibility.",
+    title: "Pricing — plans for analysts, teams and institutions",
+    description: "FoundrySignal plans: Explorer, Researcher, Professional, Team and Enterprise. Plans are configuration data — paid tiers buy capability, never credibility.",
     keywords: ["venture research pricing", "research plans", "Solana analytics pricing"],
   },
   about: {
-    title: "About â€” why we build",
+    title: "About — why we build",
     description: "FoundrySignal exists because early-stage onchain diligence is broken: narrative outruns evidence. Based in Dubai, serving a global research audience.",
   },
   contact: {
-    title: "Contact â€” research, security and enterprise",
+    title: "Contact — research, security and enterprise",
     description: "Contact FoundrySignal for research and product questions, security disclosure, and enterprise API access. Issuer Response Center for founder corrections.",
   },
   legal: {
-    title: "Legal â€” status of this deployment",
-    description: "Plain-language status: a research and information service â€” not investment advice, broker-dealer, exchange, custodian or launchpad. Review gates before activation.",
+    title: "Legal — status of this deployment",
+    description: "Plain-language status: a research and information service — not investment advice, broker-dealer, exchange, custodian or launchpad. Review gates before activation.",
   },
   privacy: {
-    title: "Privacy â€” what we collect and how it is removed",
+    title: "Privacy — what we collect and how it is removed",
     description: "Account data, research data, public founder data and logs: what FoundrySignal collects, why, and how deletion works.",
   },
   "security-disclosure": {
@@ -128,6 +129,11 @@ export const SECTION_META: Record<MarketingSection, SectionMeta> = {
     title: "Security — model, controls and vulnerability reporting",
     description: "How FoundrySignal is secured: dedicated infrastructure, authentication and session controls, evidence hashing, audit logs, reporting a vulnerability and what to expect.",
     keywords: ["FoundrySignal security", "vulnerability disclosure", "security.txt"],
+  },
+  accessibility: {
+    title: "Accessibility — current state and feedback",
+    description: "How FoundrySignal approaches keyboard access, screen readers, contrast and mobile use, what is known today, and where an independent WCAG audit is still required.",
+    keywords: ["FoundrySignal accessibility", "WCAG 2.2 AA", "keyboard navigation"],
   },
 };
 
@@ -244,6 +250,14 @@ const DOC_BLOCKS: Record<string, DocBlock[]> = {
     { h: "Scope", p: "In scope: the platform app and its API — the web application, the /api/v1 surface, authentication and session handling, workspace tenancy isolation, the SSRF-guarded fetcher, billing webhooks, and our own infrastructure configuration. Out of scope: third-party providers and their infrastructure beyond their published policies, social engineering of staff or users, physical attacks, volumetric denial of service, and reports without a reproducible proof of concept. The full disclosure policy is on /security-disclosure." },
     { h: "Where to read more", p: "What we collect and how it is removed: /privacy. The agreement governing paid access, including no auto-renewal and refunds: /terms. Coordinated disclosure and known boundaries: /security-disclosure." },
   ],
+  accessibility: [
+    { h: "Current conformance claim", p: "FoundrySignal does not currently claim conformance with WCAG 2.2 AA or any other standard. An independent accessibility audit has not been completed. This page describes the practices we build toward and the known gaps; it is not a conformance statement and must not be relied on as one." },
+    { h: "What is implemented", p: "The interface uses semantic landmarks and labelled controls, visible focus styles, keyboard-operable menus and dialogs (including Escape to close and focus return), adequate text contrast in both themes, respect for reduced-motion preferences, 44px-or-larger touch targets on the mobile tab bar, and safe-area insets for notched devices. Async surfaces expose loading, empty, error and degraded states rather than silent spinners." },
+    { h: "Known gaps", p: "There is no completed WCAG 2.2 AA audit, no screen-reader pass across all dossier tabs, no low-end Android hardware pass, and no published accessibility statement backed by a conformance evaluation. Some dense data tables and third-party wallet prompts have not been tested with assistive technology." },
+    { h: "Audit plan", p: "Before public commercial launch an independent reviewer should test keyboard-only flows, screen readers (NVDA/VoiceOver), contrast tokens in light and dark themes, zoom to 200%, reduced motion, and mobile touch targets across the golden path and all legal pages. Findings, not this page, will determine any future conformance claim." },
+    { h: "Feedback", p: `If you encounter an accessibility barrier, email ${SUPPORT_EMAIL} with the page, your assistive technology and the steps to reproduce. We acknowledge accessibility reports through the support channel and track fixes in the delivery report.` },
+    { h: "Related documents", p: "Privacy: /privacy. Security: /security. Terms of Service: /terms. Security disclosure: /security-disclosure." },
+  ],
 };
 
 /** Sibling legal documents, rendered as real links under each legal page body. */
@@ -253,6 +267,7 @@ const LEGAL_SIBLINGS: Record<string, Array<{ label: string; href: string }>> = {
   security: [{ label: "Security disclosure", href: "/security-disclosure" }, { label: "Terms of Service", href: "/terms" }, { label: "Privacy", href: "/privacy" }],
   "security-disclosure": [{ label: "Security", href: "/security" }, { label: "Terms of Service", href: "/terms" }, { label: "Privacy", href: "/privacy" }],
   legal: [{ label: "Terms of Service", href: "/terms" }, { label: "Privacy", href: "/privacy" }, { label: "Security", href: "/security" }, { label: "Security disclosure", href: "/security-disclosure" }],
+  accessibility: [{ label: "Privacy", href: "/privacy" }, { label: "Security", href: "/security" }, { label: "Terms of Service", href: "/terms" }],
 };
 
 function LegalSiblings({ section }: { section: string }) {
@@ -595,6 +610,16 @@ export function MarketingPage({ section }: { section: MarketingSection }) {
                 </a>
               </Button>
             </section>
+            <LegalSiblings section={section} />
+          </>
+        )}
+
+        {section === "accessibility" && (
+          <>
+            <JsonLd
+              data={webPageLd({ path, name: meta.title, description: meta.description, speakableCss: ["h1", ".fs-panel h2"] })}
+            />
+            <DocSection title="Accessibility" lede="Where the interface stands today, what is implemented, and what an independent audit still needs to confirm — no conformance claim is made." blocks={DOC_BLOCKS.accessibility} updated={LEGAL_LAST_UPDATED} />
             <LegalSiblings section={section} />
           </>
         )}

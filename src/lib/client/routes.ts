@@ -5,9 +5,9 @@
 export type Section =
   | "home" | "product" | "methodology" | "evidence-explainer" | "ecosystem" | "api"
   | "pricing" | "about" | "contact" | "legal" | "privacy" | "security-disclosure" | "faq"
-  | "legal-terms" | "security"
+  | "legal-terms" | "security" | "accessibility"
   | "auth"
-  | "discover" | "dossier" | "research" | "watchlists" | "markets" | "settings" | "admin"
+  | "dashboard" | "discover" | "dossier" | "research" | "watchlists" | "markets" | "settings" | "admin"
   | "design-system";
 
 export interface RouteMatch {
@@ -31,7 +31,9 @@ const MARKETING_PATHS: Record<string, Section> = {
   faq: "faq",
   terms: "legal-terms",
   security: "security",
+  accessibility: "accessibility",
   auth: "auth",
+  dashboard: "dashboard",
   discover: "discover",
   research: "research",
   watchlists: "watchlists",
@@ -57,7 +59,9 @@ const SECTION_PATHS: Partial<Record<Section, string>> = {
   faq: "/faq",
   "legal-terms": "/terms",
   security: "/security",
+  accessibility: "/accessibility",
   auth: "/auth",
+  dashboard: "/dashboard",
   discover: "/discover",
   research: "/research",
   watchlists: "/watchlists",
@@ -154,6 +158,7 @@ export const PUBLIC_ROUTES: Array<{ path: string; priority: number }> = [
   { path: "/privacy", priority: 0.3 },
   { path: "/security", priority: 0.4 },
   { path: "/security-disclosure", priority: 0.4 },
+  { path: "/accessibility", priority: 0.3 },
   { path: "/faq", priority: 0.7 },
 ];
 
@@ -173,7 +178,9 @@ const SECTION_TITLES: Record<Section, string> = {
   faq: "FAQ",
   "legal-terms": "Terms of Service",
   security: "Security",
+  accessibility: "Accessibility",
   auth: "Sign in",
+  dashboard: "Workspace",
   discover: "Discover",
   dossier: "Venture dossier",
   research: "AI analyst",

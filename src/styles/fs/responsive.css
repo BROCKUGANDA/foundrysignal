@@ -1,0 +1,190 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   FOUNDRYSIGNAL — RESPONSIVE / CROSS-BROWSER HARDENING LAYER
+   Mobile, tablet and browser-engine fixes that must not be purged.
+   Consumes semantic tokens only. Loaded after base.css so it can win
+   against element defaults, but layered under utilities where marked.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Cross-browser document fallbacks ─────────────────────────────── */
+
+@layer base {
+  /* dvh fallback for engines without dynamic viewport units (older Safari,
+     Firefox ESR): static vh first, dvh where supported. */
+  html {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Prevent horizontal scroll bleed from fixed decorations on iOS < 16
+     (clip is ideal, hidden is the fallback). */
+  html, body {
+    overflow-x: clip;
+  }
+  @supports not (overflow-x: clip) {
+    html, body { overflow-x: hidden; }
+  }
+
+  /* backdrop-filter fallback: glass surfaces degrade to a solid surface
+     instead of transparent chrome on Firefox without the flag / old WebKit. */
+  .fs-glass {
+    background: var(--fs-surface-2);
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .fs-glass { background: var(--fs-surface-glass); }
+  }
+
+  /* Firefox: match the WebKit thin-scrollbar look via the ::-webkit rules
+     in base.css where supported, keep thin elsewhere (already set). */
+
+  /* iOS Safari: strip native search-input chrome (rounded bezel + clear
+     button styling differs per engine). */
+  input[type="search"] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="search"]::-webkit-search-decoration,
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Number inputs: hide WebKit spinners inside dense data cells. */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Safari: date/time pickers overflow their field without a min height. */
+  input[type="date"], input[type="time"], input[type="datetime-local"] {
+    min-height: 2.25rem;
+  }
+
+  /* color-mix fallback for old engines is handled per-token in themes.css;
+     here we only guarantee selection legibility without it. */
+  @supports not (background: color-mix(in srgb, red 30%, transparent)) {
+    ::selection { background: var(--fs-accent-subtle); }
+  }
+}
+
+/* ─── Touch-device adaptations ─────────────────────────────────────── */
+
+/**
+ * Coarse pointers only (phones + most tablets, including detached-keyboard
+ * iPads). Pointer-fine laptops with touch screens are unaffected.
+ */
+@media (hover: none) and (pointer: coarse) {
+  @layer base {
+    /* iOS zooms any focused input under 16px. Bump form controls so tap-to-
+       focus never triggers the zoom, which breaks layout. */
+    input, select, textarea {
+      font-size: max(1rem, var(--fs-text-sm));
+    }
+
+    /* Compact desktop controls (32px buttons/inputs) miss the 44pt touch
+       target. Bump them on coarse pointers only, where the extra height is
+       expected; density-sensitive desktop layouts keep their compact sizing. */
+    .fs-btn,
+    button[data-slot="button"],
+    input,
+    select,
+    textarea {
+      min-height: var(--fs-touch-target-min);
+    }
+
+    /* Momentum scrolling for scroll containers. */
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Sticky-hover: hover styles never un-stick after a tap on iOS. Kill
+       hover restyling and keep only the :active press feedback, which the
+       .fs-press scale already provides. */
+    .fs-press:hover { background-color: inherit; }
+  }
+
+  /* Desktop-only hints are noise on touch. */
+  [data-touch-hide] { display: none !important; }
+}
+
+/* ─── Tablet (md 48rem … lg 64rem) ─────────────────────────────────── */
+
+/**
+ * The md range is the awkward middle: portrait tablets get one column,
+ * landscape tablets often two. Key paddings/typography tuned here so the
+ * jump from phone to tablet never feels like a stretched phone.
+ */
+@media (min-width: 48rem) and (max-width: 63.98rem) {
+  main#fs-main {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  /* Long-form reading: cap line length for comfort on a 768–1023px canvas. */
+  .fs-prose-md {
+    max-width: 44rem;
+  }
+}
+
+/* Tablet-and-up: give sticky headers a hair more breathing room. */
+@media (min-width: 48rem) {
+  .fs-glass { backdrop-filter: blur(calc(var(--fs-scrim-blur) + 2px)) saturate(1.4); }
+}
+
+/* ─── Wide tablets / small laptops (lg 64rem … xl 80rem) ───────────── */
+
+@media (min-width: 64rem) and (max-width: 79.98rem) {
+  main#fs-main {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* ─── Landscape phones (notch avoidance) ───────────────────────────── */
+
+@media (max-height: 30rem) and (orientation: landscape) {
+  main#fs-main {
+    padding-top: 3.5rem; /* clear the 48px mobile top bar without dvh math */
+    padding-bottom: 1rem;
+  }
+}
+
+/* ─── Dynamic-viewport fallback ─────────────────────────────────────── */
+
+/* Tailwind emits `height/min-height: 100dvh` directly for h-dvh/min-h-dvh.
+   Engines without dvh ignore the declaration entirely, which collapses the
+   sidebar and page canvas. Restore the static viewport unit there. */
+@supports not (height: 100dvh) {
+  [class~="h-dvh"] { height: 100vh; }
+  [class~="min-h-dvh"] { min-height: 100vh; }
+}
+
+/* ─── Reduced transparency (Safari / macOS) ─────────────────────────── */
+
+/* Glass surfaces are decorative; users who ask for less transparency get an
+   opaque surface instead of a blurred one. Firefox ignores the media query,
+   so the backdrop-filter fallback in @layer base still applies there. */
+@media (prefers-reduced-transparency: reduce) {
+  .fs-glass {
+    background: var(--fs-surface-2);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .fs-scrim {
+    background: var(--fs-surface-overlay);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* ─── Print (all engines) ──────────────────────────────────────────── */
+
+@media print {
+  .fs-glass,
+  .fs-grain::before,
+  .fs-scan-line::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: none !important;
+  }
+}

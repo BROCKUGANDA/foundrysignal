@@ -1,6 +1,8 @@
 import { handler, ok } from "@/lib/contracts/http";
 import { listActivePlans } from "@/lib/domain/billing/plans";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Public plan catalog — prices come from the database (configuration data),
  * never hardcoded. Billing execution is a separate capability: when no

@@ -6,12 +6,17 @@
 // completes a workspace invitation after sign-in.
 
 import React, { useState } from "react";
-import { Button, Card, CardContent, Field, Glyph, Icon, Input, LogoLockup, Select, toast } from "@/components/fs";
+import { Button, Card, CardContent, Checkbox, Field, Glyph, Icon, Input, LogoLockup, Select, toast } from "@/components/fs";
 import { useApp } from "@/lib/client/store";
-import { api, ApiClientError, type AccountState } from "@/lib/client/api";
+import { api, ApiClientError, type AccountState, type Capabilities } from "@/lib/client/api";
 import { USER_TYPES, USER_TYPE_LABELS } from "@/lib/contracts/api";
+import { TERMS_VERSION } from "@/lib/contracts/terms";
 
-type Mode = "register" | "login" | "reset" | "request-reset";
+type Mode = "register" | "login" | "mfa" | "reset" | "request-reset";
+
+type CredentialsResult =
+  | { mfaRequired: false; verificationEmailSent?: boolean }
+  | { mfaRequired: true; challenge: string };
 
 /** Registration personas — every option is a peer, none implies a role. */
 const PERSONA_OPTIONS = USER_TYPES.map((value) => ({ value, label: USER_TYPE_LABELS[value] }));
@@ -34,6 +39,12 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [userType, setUserType] = useState<string>("VENTURE_INVESTOR");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [useRecovery, setUseRecovery] = useState(false);
+  const [oauthProviders, setOauthProviders] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
@@ -61,6 +72,34 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
       });
   }, [verifyToken]);
 
+  // Only advertise providers the server reports as configured.
+  React.useEffect(() => {
+    api.get<Capabilities>("/api/v1/capabilities")
+      .then((caps) => setOauthProviders(caps.oauth?.providers ?? []))
+      .catch(() => setOauthProviders([]));
+  }, []);
+
+  // After an OAuth sign-in that needs a second factor, the callback delivers
+  // the challenge in an HttpOnly cookie rather than in the URL.
+  React.useEffect(() => {
+    if (mode !== "mfa" || challenge) return;
+    api.post<{ challenge: string }>("/api/v1/auth/mfa-challenge", {})
+      .then((data) => setChallenge(data.challenge))
+      .catch(() => setError("Your second-factor session expired. Sign in again."));
+  }, [mode, challenge]);
+
+  React.useEffect(() => {
+    if (params.oauth === "error" || params.oauth === "denied") {
+      setNotice({
+        tone: "danger",
+        text: params.oauth === "denied"
+          ? "Sign-in was cancelled at the provider."
+          : "Provider sign-in failed. No account was changed — try again or use your password.",
+      });
+      stripAuthQuery();
+    }
+  }, [params.oauth]);
+
   const acceptInviteIfPresent = async () => {
     if (!inviteToken) return;
     try {
@@ -72,25 +111,55 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
     }
   };
 
-  const submitCredentials = async () => {
+  const submitCredentials = async (): Promise<CredentialsResult> => {
     if (mode === "register") {
       const res = await api.post<{ verificationEmailSent?: boolean }>("/api/v1/auth/register", {
         email,
         password,
         name: name || undefined,
         userType,
+        acceptTerms,
+        termsVersion: TERMS_VERSION,
       });
-      return res?.verificationEmailSent;
+      return { mfaRequired: false, verificationEmailSent: res?.verificationEmailSent };
     }
-    await api.post("/api/v1/auth/login", { email, password });
-    return undefined;
+    const res = await api.post<{ mfaRequired?: boolean; challenge?: string }>("/api/v1/auth/login", { email, password });
+    // When MFA is enabled the server deliberately issues no session. The
+    // challenge must be exchanged below before the app considers us signed in.
+    if (res?.mfaRequired && res.challenge) return { mfaRequired: true, challenge: res.challenge };
+    return { mfaRequired: false };
+  };
+
+  const verifySecondFactor = async () => {
+    if (!challenge) {
+      setError("Your second-factor session expired. Sign in again.");
+      return;
+    }
+    await api.post("/api/v1/auth/mfa-verify",
+      useRecovery ? { challenge, recoveryCode: recoveryCode.trim() } : { challenge, code: mfaCode.trim() },
+    );
+    const account = await api.get<AccountState>("/api/v1/account");
+    await acceptInviteIfPresent();
+    toast.success("Signed in");
+    setMfaCode("");
+    setRecoveryCode("");
+    setChallenge(null);
+    onAuthenticated(account);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "register" && !acceptTerms) {
+      setError("Please accept the Terms of Service before creating an account.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
+      if (mode === "mfa") {
+        await verifySecondFactor();
+        return;
+      }
       if (mode === "reset") {
         if (!resetToken) {
           setError("Missing reset token — use the link from the password-reset email.");
@@ -114,12 +183,20 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
         setMode("login");
         return;
       }
-      const verificationEmailSent = await submitCredentials();
+      const credentials = await submitCredentials();
+      if (credentials.mfaRequired) {
+        setChallenge(credentials.challenge);
+        setMfaCode("");
+        setRecoveryCode("");
+        setUseRecovery(false);
+        setMode("mfa");
+        return;
+      }
       const account = await api.get<AccountState>("/api/v1/account");
       await acceptInviteIfPresent();
       toast.success(
         mode === "register"
-          ? verificationEmailSent
+          ? credentials.verificationEmailSent
             ? "Workspace created — check your inbox to verify your email."
             : "Workspace created."
           : "Signed in",
@@ -159,6 +236,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
               {mode === "register" &&
                 "Create your account and tell us who you are — investor, founder, analyst or LP. Your email is stored hashed for lookup; sessions are server-side and revocable."}
               {mode === "login" && "Sign in to your research workspace."}
+              {mode === "mfa" && "Enter the six-digit code from your authenticator app. Your password was accepted; this is the second step."}
               {mode === "reset" && "Choose a new password for your account."}
               {mode === "request-reset" && "Enter your account email — we will send you a password-reset link."}
             </p>
@@ -199,7 +277,9 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
                     ? "Create account"
                     : mode === "login"
                       ? "Sign in"
-                      : mode === "reset"
+                      : mode === "mfa"
+                        ? "Two-factor verification"
+                        : mode === "reset"
                         ? "Reset password"
                         : "Request password reset"
                 }
@@ -218,7 +298,7 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
                   </Field>
                 )}
 
-                {mode !== "reset" && (
+                {mode !== "reset" && mode !== "mfa" && (
                   <Field id="fs-email" label="Email" required>
                     {(props) => (
                       <Input
@@ -251,6 +331,51 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
                       />
                     )}
                   </Field>
+                )}
+
+                {mode === "mfa" && (
+                  useRecovery ? (
+                    <Field id="fs-recovery-code" label="Recovery code" hint="Single use — each code works once." required>
+                      {(props) => (
+                        <Input
+                          {...props}
+                          value={recoveryCode}
+                          onChange={(e) => setRecoveryCode(e.target.value)}
+                          autoComplete="one-time-code"
+                          placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"
+                        />
+                      )}
+                    </Field>
+                  ) : (
+                    <Field id="fs-mfa-code" label="Authentication code" hint="Six digits from your authenticator app." required>
+                      {(props) => (
+                        <Input
+                          {...props}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          value={mfaCode}
+                          onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          autoComplete="one-time-code"
+                          placeholder="000000"
+                        />
+                      )}
+                    </Field>
+                  )
+                )}
+
+                {mode === "mfa" && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="w-full justify-center text-xs"
+                    onClick={() => {
+                      setUseRecovery((v) => !v);
+                      setError(null);
+                    }}
+                  >
+                    {useRecovery ? "Use your authenticator code" : "Use a recovery code instead"}
+                  </Button>
                 )}
 
                 {mode === "reset" && (
@@ -299,6 +424,28 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
                   </Field>
                 )}
 
+                {mode === "register" && (
+                  <div className="flex flex-col gap-2">
+                    <Checkbox
+                      id="fs-accept-terms"
+                      label="I accept the Terms of Service"
+                      checked={acceptTerms}
+                      onChange={(e) => setAcceptTerms(e.target.checked)}
+                    />
+                    <p className="pl-7 text-2xs leading-relaxed text-ink-faint">
+                      Read the{" "}
+                      <a href="/terms" target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                        Terms of Service
+                      </a>{" "}
+                      and{" "}
+                      <a href="/privacy" target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                        Privacy policy
+                      </a>
+                      . Version {TERMS_VERSION}.
+                    </p>
+                  </div>
+                )}
+
                 {error && (
                   <p role="alert" className="rounded-md border border-[var(--fs-danger-border)] bg-[var(--fs-danger-bg)] px-3 py-2 text-xs leading-relaxed text-[var(--fs-danger-fg)]">
                     {error}
@@ -314,16 +461,43 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
                       ? "Creating account"
                       : mode === "login"
                         ? "Signing in"
-                        : mode === "reset"
-                          ? "Updating password"
-                          : "Sending reset link"
+                        : mode === "mfa"
+                          ? "Verifying"
+                          : mode === "reset"
+                            ? "Updating password"
+                            : "Sending reset link"
                   }
                 >
                   {mode === "register" && "Create account"}
                   {mode === "login" && "Sign in"}
+                  {mode === "mfa" && "Verify and sign in"}
                   {mode === "reset" && "Update password"}
                   {mode === "request-reset" && "Send reset link"}
                 </Button>
+
+                {isCredentialMode && oauthProviders.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-2xs text-ink-faint">
+                      <span className="h-px flex-1 bg-[var(--fs-border)]" />
+                      or continue with
+                      <span className="h-px flex-1 bg-[var(--fs-border)]" />
+                    </div>
+                    {oauthProviders.map((provider) => (
+                      <Button
+                        key={provider}
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          const invite = inviteToken ? `?invite=${encodeURIComponent(inviteToken)}` : "";
+                          window.location.assign(`/api/v1/auth/oauth/${provider.toLowerCase()}/start${invite}`);
+                        }}
+                      >
+                        {provider === "GITHUB" ? "GitHub" : "Google"}
+                      </Button>
+                    ))}
+                  </div>
+                )}
 
                 {isCredentialMode && (
                   <Button type="button" variant="link" className="w-full justify-center text-xs" onClick={swapMode}>
@@ -356,6 +530,22 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
                     Back to sign in
                   </Button>
                 )}
+                {mode === "mfa" && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="w-full justify-center text-xs"
+                    onClick={() => {
+                      setMode("login");
+                      setChallenge(null);
+                      setMfaCode("");
+                      setRecoveryCode("");
+                      setError(null);
+                    }}
+                  >
+                    Back to sign in
+                  </Button>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -365,9 +555,9 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
               <Glyph name="risk" size={14} />
             </span>
             <p className="text-2xs leading-relaxed text-ink-muted">
-              Email delivery is configured via Resend for this deployment; verification/reset delivery depends on provider
-              domain setup. OAuth client credentials and an MFA encryption key are configured in the environment
-              (see capability registry for live status and any enablement steps such as callback registration).
+              Email verification and password reset depend on provider domain setup. TOTP two-factor authentication can
+              be enabled under Settings → Security when the server's MFA key is configured; it is never simulated.
+              OAuth buttons appear only for providers configured with callback URLs registered at the provider.
             </p>
           </div>
         </div>

@@ -370,6 +370,281 @@ function BillingSection({ canPurchase, requestedPlan }: { canPurchase: boolean; 
   );
 }
 
+interface MfaStatus {
+  configured: boolean;
+  enabled: boolean;
+  enrollmentPending: boolean;
+  enrolledAt: string | null;
+  recoveryCodesRemaining: number;
+  algorithm: string | null;
+  digits: number | null;
+  stepSeconds: number | null;
+}
+
+interface MfaEnrollment {
+  secret: string;
+  uri: string;
+  qrSvg: string;
+  digits: number;
+  stepSeconds: number;
+  algorithm: string;
+}
+
+async function copyText(value: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(`${label} copied`);
+  } catch {
+    toast.error("Clipboard unavailable — select and copy the text manually.");
+  }
+}
+
+/** TOTP enrollment/management. Configured state is server-reported: when the
+ * key is absent we show the honest not-configured state rather than a fake
+ * authenticator flow. The secret is displayed only while enrollment is pending. */
+function MfaCard() {
+  const qc = useQueryClient();
+  const status = useQuery({
+    queryKey: ["account-mfa"],
+    queryFn: () => api.get<MfaStatus>("/api/v1/account/mfa"),
+  });
+  const [phase, setPhase] = React.useState<"idle" | "enrolling" | "codes">("idle");
+  const [password, setPassword] = React.useState("");
+  const [code, setCode] = React.useState("");
+  const [recoveryCode, setRecoveryCode] = React.useState("");
+  const [enrollment, setEnrollment] = React.useState<MfaEnrollment | null>(null);
+  const [issuedCodes, setIssuedCodes] = React.useState<string[] | null>(null);
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["account-mfa"] });
+    qc.invalidateQueries({ queryKey: ["account-sessions"] });
+  };
+  const resetLocal = () => {
+    setPhase("idle");
+    setEnrollment(null);
+    setIssuedCodes(null);
+    setPassword("");
+    setCode("");
+    setRecoveryCode("");
+  };
+
+  const enroll = useMutation({
+    mutationFn: () => api.post<MfaEnrollment>("/api/v1/account/mfa/enroll", { password }),
+    onSuccess: (data) => {
+      setEnrollment(data);
+      setPassword("");
+      setCode("");
+      setPhase("enrolling");
+    },
+    onError: (e) => toast.apiError("Enrollment could not start", e),
+  });
+  const confirm = useMutation({
+    mutationFn: () => api.post<{ enabled: boolean; recoveryCodes: string[] }>("/api/v1/account/mfa/confirm", { code }),
+    onSuccess: (data) => {
+      setIssuedCodes(data.recoveryCodes);
+      setCode("");
+      setPhase("codes");
+      refresh();
+      toast.success("Two-factor authentication enabled");
+    },
+    onError: (e) => toast.apiError("Code not accepted", e),
+  });
+  const regenerate = useMutation({
+    mutationFn: () => api.post<{ recoveryCodes: string[] }>("/api/v1/account/mfa/recovery", { code }),
+    onSuccess: (data) => {
+      setIssuedCodes(data.recoveryCodes);
+      setCode("");
+      setPhase("codes");
+      refresh();
+      toast.success("New recovery codes generated");
+    },
+    onError: (e) => toast.apiError("Recovery codes not regenerated", e),
+  });
+  const disable = useMutation({
+    mutationFn: () => api.post<{ disabled: boolean }>("/api/v1/account/mfa/disable",
+      recoveryCode.trim() ? { recoveryCode: recoveryCode.trim() } : { code }),
+    onSuccess: () => {
+      resetLocal();
+      refresh();
+      toast.success("Two-factor authentication disabled");
+    },
+    onError: (e) => toast.apiError("Two-factor authentication not disabled", e),
+  });
+
+  const codeField = (id: string) => (
+    <Field id={id} label="Authentication code" hint="Six digits from your authenticator app." required>
+      {(props) => (
+        <Input
+          {...props}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={8}
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+          autoComplete="one-time-code"
+          placeholder="000000"
+        />
+      )}
+    </Field>
+  );
+
+  return (
+    <Card className="mt-3">
+      <CardHeader>
+        <CardTitle className="text-sm">Two-factor authentication</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {status.isLoading && <LoadingState rows={2} label="MFA status loading" />}
+        {status.isError && (
+          <ErrorState
+            title="MFA status unavailable"
+            message={status.error instanceof Error ? status.error.message : "Could not load MFA status."}
+            onRetry={() => status.refetch()}
+          />
+        )}
+
+        {status.data && !status.data.configured && (
+          <p className="text-xs leading-relaxed text-ink-muted">
+            Two-factor authentication is available only when the server has an <code>MFA_ENCRYPTION_KEY</code>. It is not
+            configured in this deployment, so no enrollment is offered and no authenticator state is simulated.
+          </p>
+        )}
+
+        {status.data?.configured && status.data.enabled && phase !== "codes" && (
+          <>
+            <div className="flex items-center gap-2">
+              <Badge tone="success" size="sm" dot>Enabled</Badge>
+              <span className="text-2xs text-ink-faint">
+                {status.data.algorithm} · {status.data.digits} digits · {status.data.stepSeconds}s · since{" "}
+                {status.data.enrolledAt ? new Date(status.data.enrolledAt).toLocaleDateString() : "unknown"}
+              </span>
+            </div>
+            <p className="text-2xs text-ink-muted">
+              {status.data.recoveryCodesRemaining} unused single-use recovery code
+              {status.data.recoveryCodesRemaining === 1 ? "" : "s"} remaining.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <p className="fs-label">Replace recovery codes</p>
+                {codeField("fs-mfa-regen-code")}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={code.length < 6 || regenerate.isPending}
+                  loading={regenerate.isPending}
+                  onClick={() => regenerate.mutate()}
+                >
+                  Regenerate codes
+                </Button>
+              </div>
+              <div className="flex flex-col gap-2">
+                <p className="fs-label">Turn off two-factor</p>
+                {codeField("fs-mfa-disable-code")}
+                <Field id="fs-mfa-disable-recovery" label="Or use a recovery code">
+                  {(props) => (
+                    <Input
+                      {...props}
+                      value={recoveryCode}
+                      onChange={(e) => setRecoveryCode(e.target.value)}
+                      placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"
+                    />
+                  )}
+                </Field>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={(code.length < 6 && recoveryCode.trim().length < 8) || disable.isPending}
+                  loading={disable.isPending}
+                  onClick={() => disable.mutate()}
+                >
+                  Disable two-factor
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {status.data?.configured && status.data.enrollmentPending && phase === "idle" && (
+          <p className="text-xs text-ink-muted">
+            An enrollment was started but never confirmed, so it is inactive. Restart it below to generate a fresh secret.
+          </p>
+        )}
+
+        {status.data?.configured && !status.data.enabled && phase === "idle" && (
+          <>
+            <p className="text-xs leading-relaxed text-ink-muted">
+              Add a time-based code to your sign-in. You will need your current password to start, then a code from your
+              authenticator to activate it. Store the recovery codes somewhere safe — they are shown once.
+            </p>
+            <Field id="fs-mfa-password" label="Current password" required>
+              {(props) => (
+                <Input {...props} type="password" value={password}
+                  onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+              )}
+            </Field>
+            <div>
+              <Button size="sm" disabled={password.length === 0 || enroll.isPending}
+                loading={enroll.isPending} loadingLabel="Preparing" onClick={() => enroll.mutate()}>
+                Start enrollment
+              </Button>
+            </div>
+          </>
+        )}
+
+        {phase === "enrolling" && enrollment && (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-ink">
+              1. Scan this QR with your authenticator, or enter the secret manually. It has not been activated yet.
+            </p>
+            <img
+              src={`data:image/svg+xml;utf8,${encodeURIComponent(enrollment.qrSvg)}`}
+              alt="Authenticator enrollment QR code"
+              className="size-[220px]"
+            />
+            <div className="flex items-center gap-2">
+              <code className="fs-data break-all rounded border border-[var(--fs-border)] bg-surface-2 p-2 text-xs text-ink">
+                {enrollment.secret}
+              </code>
+              <Button size="sm" variant="outline" onClick={() => copyText(enrollment.secret, "Secret")}>Copy</Button>
+            </div>
+            <p className="text-xs text-ink">2. Enter the code it shows to activate two-factor authentication.</p>
+            {codeField("fs-mfa-confirm-code")}
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={code.length < 6 || confirm.isPending}
+                loading={confirm.isPending} loadingLabel="Verifying" onClick={() => confirm.mutate()}>
+                Verify and enable
+              </Button>
+              <Button size="sm" variant="ghost" onClick={resetLocal}>Cancel</Button>
+            </div>
+          </div>
+        )}
+
+        {phase === "codes" && issuedCodes && (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-ink">
+              Two-factor authentication is active. Save these recovery codes now — each works once and they are shown only
+              this once. They are stored as hashes and cannot be retrieved later.
+            </p>
+            <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+              {issuedCodes.map((c) => (
+                <li key={c} className="fs-data rounded border border-[var(--fs-border)] bg-surface-2 p-2 text-xs text-ink">
+                  {c}
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => copyText(issuedCodes.join("\n"), "Recovery codes")}>
+                Copy all
+              </Button>
+              <Button size="sm" onClick={resetLocal}>Done</Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Security — password change (verifies current password, revokes other
  * sessions) and the caller's active session list with revoke. Device metadata
  * is not captured by this deployment's Session model, so sessions are listed
@@ -492,6 +767,8 @@ function SecuritySection() {
           </div>
         </CardContent>
       </Card>
+
+      <MfaCard />
 
       <Card className="mt-3">
         <CardHeader>

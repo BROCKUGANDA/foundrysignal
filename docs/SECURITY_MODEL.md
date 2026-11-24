@@ -10,6 +10,24 @@ stated here as such rather than implied away).
 - Login throttling per email+IP with bounded counters; generic error messages; **timing-equalized verification** (unknown emails run the same bcrypt cost against a throwaway hash) so latency does not enumerate accounts. Registration throttled per IP (10/hour). Throttles are in-process (single-instance assumption).
 - Account deletion workflow: soft delete + session revocation; personal data retention documented. Open recommendation: password re-entry for deletion.
 
+## Two-factor authentication (TOTP, added 2026-11-20)
+- Opt-in per account under Settings → Security. Enrollment requires re-entering the current password so a stolen session cannot enroll an attacker-controlled factor.
+- Secret: 20 random bytes base32; stored only as AES-256-GCM ciphertext with a fresh 12-byte IV and 16-byte auth tag, with the user id as AAD (a row transplanted to another user cannot be decrypted). Key from `MFA_ENCRYPTION_KEY` (64-hex raw key or SHA-256-derived passphrase). No secret, ciphertext or recovery hash is returned by the status endpoint.
+- Verification: RFC 6238 (HMAC-SHA1, 6 digits, 30 s) with ±1 step skew. The matched time-step counter is the replay guard and advances only in the same conditional write that proves the code was unused. Codes are compared with `timingSafeEqual`.
+- Login step-up: a correct password issues a single-use, 5-minute challenge but **no session**. The challenge is consumed before factor verification; a wrong code fails closed. MFA users cannot reach authenticated routes with a password alone.
+- Recovery: 10 single-use codes stored as SHA-256 hashes, consumed with a conditional atomic write; regenerating invalidates all previous codes. Plaintext is shown exactly once.
+- Denial of service: per-purpose attempt counters (5 attempts / 15 min) plus the DB-backed API write limiter. Attempt state is in-process; the cross-process limiter is the second layer.
+- Fail-closed configuration: without `MFA_ENCRYPTION_KEY`, enrollment is unavailable and an enrolled account cannot verify (no bypass). Password reset, disable and account deletion clear outstanding challenges.
+- Audit events: `MFA_ENROLL_START`, `MFA_ENROLL_CONFIRM`, `AUTH_MFA_CHALLENGE`, `AUTH_MFA_VERIFY`, `MFA_RECOVERY_REGENERATE`, `MFA_DISABLE`.
+
+## OAuth sign-in (added 2026-11-20)
+- Authorization-code + PKCE S256 for GitHub and Google. `state` is 256-bit random, persisted only as SHA-256, single-use, 10-minute expiry; the PKCE verifier is server-side only and never appears in a URL or readable cookie.
+- `redirect_uri` is constructed solely from `NEXT_PUBLIC_SITE_URL` — a request-supplied redirect is never accepted. Callback errors return a generic redirect with no provider detail or token in the URL.
+- Provider tokens are used for one userinfo request in memory and never persisted. Login requires a **provider-asserted verified email**; unverified addresses are rejected and no account is created. Linking is by email hash only — never by name, avatar or provider user id.
+- An existing account with TOTP MFA receives a single-use step-up challenge via an HttpOnly cookie and no session; the cookie is consumed by `/api/v1/auth/mfa-challenge` and deleted.
+- New OAuth accounts get an unguessable random password hash (no password sign-in), an email-verified timestamp and a personal workspace. Provider client secrets are read from the server environment only.
+- Callback URLs must be registered with GitHub/Google by the operator; the capability registry reports which providers are configured.
+
 ## Authorization
 - Two axes: platform role (`USER`, `MODERATOR`, `PLATFORM_ADMIN`) and workspace role (`OWNER`, `ADMIN`, `ANALYST`, `VIEWER`) with rank-based enforcement (`requireWorkspaceRole`).
 - All service-layer functions receive an `AuthContext` and enforce visibility; tenant ownership is asserted with `assertTenant` on workspace-scoped resources (cross-tenant watchlist deletion found and fixed in the increment-3 review; billing checkout/portal require workspace ADMIN+).

@@ -1,14 +1,18 @@
 # Trading release gate review packages — index & operator runbook
 
-**Status: ALL GATES OPEN (NOT_STARTED) · Kill switch: ENGAGED · `TRADING_ENABLED` unset.**
+**Status: ALL GATES OPEN (NOT_STARTED) · Kill switch: ENGAGED.**
+**`TRADING_ENABLED=true` in the deploy workflow by explicit operator decision (commit `f3cf2d1`).**
 
 Execution is impossible in this deployment until every condition below is met.
+The four human gate decisions and the kill switch remain the controlling safety
+conditions; the environment flag alone grants no capability.
 The four review packages in this directory contain the collected evidence for
 each gate. **Evidence collection and machine verification are complete; the
 decision itself belongs to qualified human reviewers — no gate has been
-approved by this process, and the env flag has deliberately NOT been flipped.**
+approved by this process. The environment flag was later armed by operator
+decision (see the status line above); that does not constitute gate approval.**
 
-## Why the flag is still OFF
+## Why no gate has been approved (historical default-deny posture)
 
 The operator instruction was to "run the four review gates through your real
 counsel/security reviewers, then flip the env flag". This environment has no

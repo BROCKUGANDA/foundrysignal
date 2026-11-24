@@ -72,5 +72,10 @@ registerJob("cleanup_jobs", async (ctx) => {
   const res = await db.jobRecord.deleteMany({
     where: { status: "COMPLETED", finishedAt: { lt: cutoff } },
   });
-  ctx.log("cleaned jobs", { count: res.count });
+  // Short-lived auth state must not accumulate. Consumed rows are removed too;
+  // used/expired tokens carry no value once the flow has completed.
+  const now = new Date();
+  const tokens = await db.verificationToken.deleteMany({ where: { OR: [{ expires: { lt: now } }, { usedAt: { lt: cutoff } }] } });
+  const oauthStates = await db.oAuthState.deleteMany({ where: { OR: [{ expires: { lt: now } }, { usedAt: { lt: cutoff } }] } });
+  ctx.log("cleaned jobs", { count: res.count, verificationTokens: tokens.count, oauthStates: oauthStates.count });
 });

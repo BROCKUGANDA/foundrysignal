@@ -86,6 +86,7 @@ export function MarketingFooter() {
                 { label: "Privacy", href: "/privacy" },
                 { label: "Security", href: "/security" },
                 { label: "Security disclosure", href: "/security-disclosure" },
+                { label: "Accessibility", href: "/accessibility" },
                 { label: "Design system", href: "/design-system" },
               ]}
             />
