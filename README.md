@@ -27,6 +27,30 @@ bun run test           # 244 unit/integration tests (bun test --isolate)
 bash scripts/smoke-golden-path.sh   # full E2E golden path incl. trading gates + pricing
 ```
 
+### Local verification database
+
+If the configured `DATABASE_URL` is unreachable, provision an isolated local
+PostgreSQL cluster (Windows, PostgreSQL 17 already installed), then point `.env`
+at it and apply migrations:
+
+```powershell
+$bin='C:\Program Files\PostgreSQL\17\bin'
+$data='C:\Users\HP\AppData\Local\Temp\opencode\fs-pgdata'
+$pw='FsLocalVerify2026'
+$pwfile='C:\Users\HP\AppData\Local\Temp\opencode\fs-pgpw.txt'
+Set-Content -NoNewline -Encoding ascii $pwfile $pw
+& "$bin\initdb.exe" -D $data -U foundrysignal -A scram-sha-256 --pwfile=$pwfile
+Remove-Item $pwfile
+& "$bin\pg_ctl.exe" -D $data -l 'C:\Users\HP\AppData\Local\Temp\opencode\fs-pg.log' -o '-p 55433' -w start
+$env:PGPASSWORD=$pw
+& "$bin\createdb.exe" -h 127.0.0.1 -p 55433 -U foundrysignal foundrysignal
+# .env: DATABASE_URL=postgresql://foundrysignal:FsLocalVerify2026@127.0.0.1:55433/foundrysignal
+bun x prisma migrate deploy
+```
+
+This cluster is temporary (temp folder) — it must be recreated after a machine
+restart. Never use these local credentials anywhere but localhost.
+
 `bun run test` maps to `bun test --isolate`. The flag is required: Bun's
 `mock.module()` is process-global, so the checkout boundary suite's in-memory
 `db` mock would otherwise leak into every other test file in the same process.
