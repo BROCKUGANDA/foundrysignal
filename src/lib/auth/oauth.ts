@@ -215,6 +215,15 @@ export async function completeOAuth(input: {
   if (user && user.status !== "ACTIVE") {
     throw new ApiHttpError("FORBIDDEN", "This account is not active.", false);
   }
+  // An unverified password account may have been pre-registered by someone
+  // else; linking the provider identity into it would hand that party access.
+  if (user && !user.emailVerifiedAt) {
+    throw new ApiHttpError(
+      "FORBIDDEN",
+      "An account already exists for this email but is not verified. Verify it, then sign in with your password.",
+      false,
+    );
+  }
   if (!user) {
     user = await db.user.create({
       data: {
