@@ -29,6 +29,9 @@ jobs:
     env:
       DATABASE_URL: postgresql://foundrysignal:fs_local_2026@127.0.0.1:55435/foundrysignal
       NODE_ENV: test
+      # Test-only key: mfa.test.ts snapshots the original env value and restores
+      # it after each test, so an unset key makes all but the first test fail.
+      MFA_ENCRYPTION_KEY: test-mfa-key-32-bytes-derived-by-sha256
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
