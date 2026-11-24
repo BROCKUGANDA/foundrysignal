@@ -35,10 +35,13 @@ Restatement of checklist §5 ("SIGN-OFF ITEMS REQUIRING OPERATOR INPUT"). The
 | 6 | **Country availability / sanctions stance** | **No geofencing, no sanctions screening and no KYC exist** (checklist §5.6; gate review `LEGAL_JURISDICTION_REVIEW.md` §3 Q3/Q4). USDC payers are wallet addresses, not verified persons; onchain payments are irreversible. `/terms` places sanctions/export-control compliance on the user under "lawful use", but no technical control backs it. | (a) Global availability, no screening, enhanced disclosures; (b) blocked-country list + IP gate; (c) user attestation gate; (d) screening/KYC vendor. | Counsel must decide whether wallet-only, unscreened, irreversible payment is acceptable before paid public launch. See §4 brief. No compliance claim in any option. | Counsel + operator | **OPEN** |
 | 7 | **Trademark clearance for "FoundrySignal"** | README, footer and `/about` state "working name pending professional name and trademark clearance." No search/clearance result or filing decision is in the repo. | (a) Run clearance and file (classes 9/35/42 per checklist); (b) keep operating under the working name with the existing footer/`/about` disclosure retained. | Operator to obtain clearance decision; until cleared, retain the working-name disclosure. No filing or result may be asserted. `OPERATOR INPUT REQUIRED`. | Operator + trademark counsel | **OPEN** |
 
-**Not yet engineering-ready (checklist §7, for awareness, not sign-off items):**
-no `termsAcceptedAt` acceptance record; no refund execution code; no invoice/receipt
-model; no geofencing/screening; no billing watcher (a paid transfer can sit unclaimed
-if the tab closes); stock Stripe paths still in tree — counsel should confirm the
+**Engineering status (checklist §7, for awareness, not sign-off items):**
+`termsAcceptedAt` + `termsVersion` are now recorded for credential registrations,
+but OAuth-created accounts still have no consent step; a checkout watcher now
+settles pending intents server-side, but an intent paid after expiry still needs
+operator discretion. Still absent: refund execution code, an invoice/receipt model,
+geofencing/screening, and a re-acceptance flow on material terms changes. Stock
+Stripe paths remain in the tree — counsel should confirm the
 `/api/v1/billing/portal` route cannot be reached in production.
 
 ---
@@ -50,10 +53,12 @@ data (websites, GitHub REST API, read-only Solana RPC, Jupiter market context) i
 collected server-side, stored as immutable SHA-256-hashed snapshots, classified by a
 deterministic engine, and summarised by a grounded AI analyst with server-validated
 citations. It is stated to be **not** investment advice, broker-dealer, exchange,
-custodian or launchpad. Trading execution exists in code but is held behind a release
-gate that is **OFF** (`403 EXECUTION_GATED`; `TRADING_ENABLED` unset, kill switch
-engaged — `docs/gate-reviews/README.md`). Operated from Dubai, UAE, for a global
-research audience.
+custodian or launchpad. Trading execution exists in code but is held behind four
+human release gates and a kill switch; the execute route returns `403
+EXECUTION_GATED` until all gates are approved and the kill switch is clear.
+`TRADING_ENABLED=true` is armed by explicit operator decision
+(`docs/OPERATIONS_READINESS.md` §7) but grants no capability on its own. Operated
+from Dubai, UAE, for a global research audience.
 
 **Money flow (as built).** Workspace ADMIN requests checkout → server creates an intent
 (destination `PAYOUT_WALLET`, exact USDC amount, memo `FS-<uuid tail>`, 30-minute TTL)
@@ -150,17 +155,19 @@ may be added to public copy without it.**
 
 ## 5. Accessibility audit plan
 
-**Current state.** No accessibility statement and no conformance claim (e.g. WCAG 2.2
-AA) is published anywhere. The checklist (§6.8) notes the European Accessibility Act
-may apply by 2025-06-28 for in-scope e-commerce and that counsel must confirm scope;
-it also states this needs **a copy addition and an audit — not copy alone**. No audit
-has been performed; no result is asserted here.
+**Current state.** A public `/accessibility` page now states what is implemented,
+the known gaps and the audit plan, and explicitly makes **no conformance claim**.
+No independent WCAG 2.2 AA audit has been performed; no result is asserted here.
+The checklist (§6.8) notes the European Accessibility Act may apply by 2025-06-28
+for in-scope e-commerce and that counsel must confirm scope; it also states this
+needs **a copy addition and an audit — not copy alone**. The copy addition exists;
+the audit does not.
 
 **Scope to test (WCAG 2.2 AA target).**
 - Public/marketing and legal pages (server-rendered RSC): `/`, `/product`,
   `/methodology`, `/evidence`, `/ecosystem`, `/api-docs`, `/pricing`, `/about`,
   `/contact`, `/faq`, `/legal`, `/privacy`, `/terms`, `/security`,
-  `/security-disclosure`. Prioritise `/pricing` (plan grid, "most chosen" badge, CTA
+  `/security-disclosure`, `/accessibility`. Prioritise `/pricing` (plan grid, "most chosen" badge, CTA
   links) and the legal document pages (`DocSection` headings + sibling link nav).
 - Authenticated flows (higher priority where money moves): sign-in/auth (OAuth
   buttons, MFA enrollment/challenge), `/settings` checkout panel (destination wallet,
