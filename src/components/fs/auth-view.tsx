@@ -33,7 +33,9 @@ export function AuthView({ onAuthenticated }: { onAuthenticated: (account: Accou
   const inviteToken = params.invite;
   const resetToken = params.reset;
   const verifyToken = params.verify;
-  const [mode, setMode] = useState<Mode>(resetToken ? "reset" : params.mode === "login" ? "login" : "register");
+  const [mode, setMode] = useState<Mode>(
+    resetToken ? "reset" : params.mode === "mfa" ? "mfa" : params.mode === "login" ? "login" : "register",
+  );
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");

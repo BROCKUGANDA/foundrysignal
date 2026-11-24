@@ -137,6 +137,12 @@ export function pathToSection(pathname: string, search: string): RouteMatch | nu
       if (invite) params.invite = invite;
       if (verify) params.verify = verify;
       if (reset) params.reset = reset;
+      // OAuth callback hand-off: mode=mfa opens the second-factor step;
+      // oauth=error|denied shows a provider failure notice.
+      const mode = qs.get("mode");
+      const oauth = qs.get("oauth");
+      if (mode === "login" || mode === "mfa") params.mode = mode;
+      if (oauth === "error" || oauth === "denied") params.oauth = oauth;
     }
   }
   return { section, params };
