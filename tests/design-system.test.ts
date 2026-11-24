@@ -23,25 +23,52 @@ const ROOT = join(import.meta.dir, "..");
 
 /* ─── Token parsing ─────────────────────────────────────────────────── */
 
-/** Extract custom properties declared under a selector, ignoring at-rules. */
+/**
+ * Extract custom properties declared under a selector in the shipped themes.
+ * Blocks nested inside at-rules are skipped: the `color-mix()` fallback block
+ * re-declares tokens for engines that lack support and is not a theme scope.
+ */
 function tokensFor(css: string, selector: ".dark" | ".light"): Set<string> {
   const out = new Set<string>();
   const clean = css.replace(/\/\*[\s\S]*?\*\//g, "");
-  const blockRe = /([^{}]+)\{([^{}]*)\}/g;
-  let match: RegExpExecArray | null;
-  while ((match = blockRe.exec(clean))) {
-    const sel = match[1].replace(/\s+/g, "");
-    const inSelector = sel.split(",").includes(selector);
-    // Dark tokens also live on :root (the `.dark, :root` list).
-    const isDarkRoot = selector === ".dark" && sel.split(",").includes(":root");
-    if (!inSelector && !isDarkRoot) continue;
-    for (const decl of match[2].split(";")) {
-      const colon = decl.indexOf(":");
-      if (colon < 0) continue;
-      const name = decl.slice(0, colon).trim();
-      if (name.startsWith("--fs-")) out.add(name);
+  const walk = (text: string) => {
+    let i = 0;
+    while (i < text.length) {
+      const open = text.indexOf("{", i);
+      if (open < 0) break;
+      const header = text.slice(i, open).trim();
+      let depth = 1;
+      let j = open + 1;
+      while (j < text.length && depth > 0) {
+        if (text[j] === "{") depth++;
+        else if (text[j] === "}") depth--;
+        if (depth > 0) j++;
+      }
+      const body = text.slice(open + 1, j);
+      if (header.startsWith("@")) {
+        // @media/@supports bodies may hold themed rules; only descend into
+        // screen-theme media queries, never print/forced-colors/fallbacks.
+        if (!/color-mix/i.test(header) && !/print|forced-colors/i.test(header)) {
+          walk(body);
+        }
+      } else {
+        const sels = header.replace(/\s+/g, "").split(",");
+        const inSelector = sels.includes(selector);
+        // Dark tokens also live on :root (the `.dark, :root` list).
+        const isDarkRoot = selector === ".dark" && sels.includes(":root");
+        if (inSelector || isDarkRoot) {
+          for (const decl of body.split(";")) {
+            const colon = decl.indexOf(":");
+            if (colon < 0) continue;
+            const name = decl.slice(0, colon).trim();
+            if (name.startsWith("--fs-")) out.add(name);
+          }
+        }
+      }
+      i = j + 1;
     }
-  }
+  };
+  walk(clean);
   return out;
 }
 

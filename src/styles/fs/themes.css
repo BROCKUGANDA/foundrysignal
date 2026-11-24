@@ -332,3 +332,69 @@
     display: none !important;
   }
 }
+
+/* ── color-mix() engine fallback ──────────────────────────────────────
+   Safari < 16.2 / Firefox ESR do not support color-mix(). A custom property
+   whose value uses an unsupported function is invalid at computed-value
+   time, so translucent surfaces would disappear rather than degrade.
+   Redefine every affected token with pre-computed rgba() equivalents here;
+   browsers with color-mix() support never enter this block and keep the
+   canonical values above. Ratios match the source ramps in tokens.css. */
+@supports not (color: color-mix(in srgb, red 30%, transparent)) {
+  .dark,
+  :root {
+    --fs-text-disabled: rgba(138, 153, 171, 0.55);
+    --fs-accent-subtle: rgba(100, 229, 203, 0.12);
+    --fs-accent-muted: rgba(100, 229, 203, 0.22);
+    --fs-accent-border: rgba(100, 229, 203, 0.4);
+    --fs-accent-2-subtle: rgba(120, 153, 255, 0.12);
+    --fs-accent-2-border: rgba(120, 153, 255, 0.4);
+    --fs-success-bg: rgba(100, 229, 203, 0.11);
+    --fs-success-border: rgba(100, 229, 203, 0.34);
+    --fs-warning-bg: rgba(232, 181, 111, 0.11);
+    --fs-warning-border: rgba(232, 181, 111, 0.34);
+    --fs-danger-bg: rgba(255, 116, 125, 0.11);
+    --fs-danger-border: rgba(255, 116, 125, 0.34);
+    --fs-info-bg: rgba(120, 153, 255, 0.11);
+    --fs-info-border: rgba(120, 153, 255, 0.34);
+    --fs-positive-bg: rgba(111, 212, 137, 0.11);
+    --fs-positive-border: rgba(111, 212, 137, 0.34);
+    --fs-neutral-bg: rgba(138, 153, 171, 0.12);
+    --fs-focus-halo: rgba(100, 229, 203, 0.26);
+    --fs-disabled-bg: rgba(138, 153, 171, 0.1);
+    --fs-disabled-fg: rgba(138, 153, 171, 0.5);
+    --fs-scan-gradient: linear-gradient(90deg, transparent, rgba(100, 229, 203, 0.09), transparent);
+
+    /* Theme-invariant shadows/gradients defined with color-mix in tokens.css. */
+    --fs-shadow-glow-accent: 0 0 0 1px rgba(100, 229, 203, 0.4), 0 0 24px rgba(100, 229, 203, 0.22);
+    --fs-shadow-glow-blue: 0 0 0 1px rgba(120, 153, 255, 0.4), 0 0 24px rgba(120, 153, 255, 0.2);
+    --fs-gradient-signal-soft: linear-gradient(135deg, rgba(100, 229, 203, 0.16) 0%, rgba(120, 153, 255, 0.12) 100%);
+    --fs-gradient-fade-up: linear-gradient(180deg, rgba(120, 153, 255, 0.09) 0%, transparent 72%);
+    --fs-gradient-prism: radial-gradient(circle at 30% 20%, rgba(100, 229, 203, 0.16) 0%, transparent 56%),
+      radial-gradient(circle at 74% 78%, rgba(120, 153, 255, 0.14) 0%, transparent 56%);
+  }
+
+  .light {
+    --fs-text-disabled: rgba(92, 107, 125, 0.52);
+    --fs-accent-subtle: rgba(33, 168, 147, 0.09);
+    --fs-accent-muted: rgba(33, 168, 147, 0.16);
+    --fs-accent-border: rgba(33, 168, 147, 0.38);
+    --fs-accent-2-subtle: rgba(67, 97, 216, 0.09);
+    --fs-accent-2-border: rgba(67, 97, 216, 0.36);
+    --fs-success-bg: rgba(33, 168, 147, 0.1);
+    --fs-success-border: rgba(33, 168, 147, 0.36);
+    --fs-warning-bg: rgba(192, 132, 50, 0.12);
+    --fs-warning-border: rgba(168, 116, 31, 0.38);
+    --fs-danger-bg: rgba(221, 63, 73, 0.1);
+    --fs-danger-border: rgba(221, 63, 73, 0.36);
+    --fs-info-bg: rgba(90, 123, 240, 0.09);
+    --fs-info-border: rgba(90, 123, 240, 0.34);
+    --fs-positive-bg: rgba(44, 155, 85, 0.1);
+    --fs-positive-border: rgba(44, 155, 85, 0.34);
+    --fs-neutral-bg: rgba(92, 107, 125, 0.08);
+    --fs-focus-halo: rgba(33, 168, 147, 0.22);
+    --fs-disabled-bg: rgba(92, 107, 125, 0.08);
+    --fs-disabled-fg: rgba(92, 107, 125, 0.5);
+    --fs-scan-gradient: linear-gradient(90deg, transparent, rgba(33, 168, 147, 0.08), transparent);
+  }
+}

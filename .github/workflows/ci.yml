@@ -48,11 +48,25 @@ jobs:
       - run: bun run build
       - name: Secret scan
         if: github.event_name == 'pull_request'
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+        # The self-hosted runner's Docker daemon is denied access to ghcr.io,
+        # so the Docker-backed action cannot start. Run the same official
+        # engine from its release binary instead, with explicit PR SHAs.
+        run: |
+          set -euo pipefail
+          version=3.100.1
+          case "$(uname -m)" in
+            x86_64) arch=amd64 ;;
+            aarch64|arm64) arch=arm64 ;;
+            *) echo "unsupported runner architecture"; exit 1 ;;
+          esac
+          asset="trufflehog_${version}_linux_${arch}.tar.gz"
+          curl -fsSL "https://github.com/trufflesecurity/trufflehog/releases/download/v${version}/${asset}" \
+            -o "$RUNNER_TEMP/trufflehog.tar.gz"
+          tar -xzf "$RUNNER_TEMP/trufflehog.tar.gz" -C "$RUNNER_TEMP" trufflehog
+          "$RUNNER_TEMP/trufflehog" git file://. \
+            --since-commit "${{ github.event.pull_request.base.sha }}" \
+            --branch "${{ github.event.pull_request.head.sha }}" \
+            --fail --no-update
 
   audit:
     name: Dependency & security audit
