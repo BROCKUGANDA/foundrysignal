@@ -241,7 +241,7 @@ export function Pagination({
           onClick={onPrev}
           disabled={!hasPrev || loading}
           className={cn(
-            "fs-press inline-flex h-8 items-center rounded-md border border-[var(--fs-border-strong)] bg-surface px-3 text-sm font-medium text-ink",
+            "fs-press fs-touch inline-flex h-8 items-center rounded-md border border-[var(--fs-border-strong)] bg-surface px-3 text-sm font-medium text-ink lg:min-h-0",
             "transition-colors duration-fast ease-out hover:bg-surface-2",
             "disabled:pointer-events-none disabled:opacity-55",
           )}
@@ -253,7 +253,7 @@ export function Pagination({
           onClick={onNext}
           disabled={!hasNext || loading}
           className={cn(
-            "fs-press inline-flex h-8 items-center rounded-md border border-[var(--fs-border-strong)] bg-surface px-3 text-sm font-medium text-ink",
+            "fs-press fs-touch inline-flex h-8 items-center rounded-md border border-[var(--fs-border-strong)] bg-surface px-3 text-sm font-medium text-ink lg:min-h-0",
             "transition-colors duration-fast ease-out hover:bg-surface-2",
             "disabled:pointer-events-none disabled:opacity-55",
           )}

@@ -81,6 +81,17 @@
       font-size: max(1rem, var(--fs-text-sm));
     }
 
+    /* Compact desktop controls (32px buttons/inputs) miss the 44pt touch
+       target. Bump them on coarse pointers only, where the extra height is
+       expected; density-sensitive desktop layouts keep their compact sizing. */
+    .fs-btn,
+    button[data-slot="button"],
+    input,
+    select,
+    textarea {
+      min-height: var(--fs-touch-target-min);
+    }
+
     /* Momentum scrolling for scroll containers. */
     * {
       -webkit-overflow-scrolling: touch;
@@ -135,6 +146,34 @@
   main#fs-main {
     padding-top: 3.5rem; /* clear the 48px mobile top bar without dvh math */
     padding-bottom: 1rem;
+  }
+}
+
+/* ─── Dynamic-viewport fallback ─────────────────────────────────────── */
+
+/* Tailwind emits `height/min-height: 100dvh` directly for h-dvh/min-h-dvh.
+   Engines without dvh ignore the declaration entirely, which collapses the
+   sidebar and page canvas. Restore the static viewport unit there. */
+@supports not (height: 100dvh) {
+  [class~="h-dvh"] { height: 100vh; }
+  [class~="min-h-dvh"] { min-height: 100vh; }
+}
+
+/* ─── Reduced transparency (Safari / macOS) ─────────────────────────── */
+
+/* Glass surfaces are decorative; users who ask for less transparency get an
+   opaque surface instead of a blurred one. Firefox ignores the media query,
+   so the backdrop-filter fallback in @layer base still applies there. */
+@media (prefers-reduced-transparency: reduce) {
+  .fs-glass {
+    background: var(--fs-surface-2);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .fs-scrim {
+    background: var(--fs-surface-overlay);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
