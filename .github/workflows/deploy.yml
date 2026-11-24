@@ -75,6 +75,17 @@ jobs:
             | sudo tee /etc/systemd/system/${SERVICE}.service.d/env.conf >/dev/null
           sudo systemctl daemon-reload
 
+      # A stale block-storage drop-in used to override WorkingDirectory to an
+      # old release, so deploys built new code but the service kept running the
+      # old one. This later-sorted drop-in wins and binds the service to the
+      # standalone output this workflow just built.
+      - name: Bind service to the freshly built standalone output
+        run: |
+          sudo mkdir -p /etc/systemd/system/${SERVICE}.service.d
+          printf '[Service]\nWorkingDirectory=%s/.next/standalone\n' "$APP_DIR" \
+            | sudo tee /etc/systemd/system/${SERVICE}.service.d/zz-appdir.conf >/dev/null
+          sudo systemctl daemon-reload
+
       - name: Sync source
         run: |
           rsync -a --delete --exclude node_modules --exclude .next --exclude .git --exclude .env ./ "$APP_DIR/"

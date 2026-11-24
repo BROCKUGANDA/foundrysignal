@@ -174,7 +174,14 @@ independent accessibility audit.
 6. **No staging evidence.** CI provisions a throwaway PostgreSQL service, but a
    persistent staging environment with its own migration history is not
    evidenced in the repo.
-7. **Release-gate sign-off remains human.** Machine evidence packages exist in
+7. **Stale block-storage drop-in (fixed).** `block-storage.conf` pointed
+   `WorkingDirectory` at `/mnt/data/apps/foundrysignal/current` (release
+   `fs-20261119-r3`) while the deploy workflow builds into `APP_DIR`. Deploys
+   therefore passed health checks on the old app. The workflow now writes
+   `zz-appdir.conf` to bind the service to `APP_DIR/.next/standalone` before
+   restarting; verify `/accessibility` = 200 and a terms-less registration = 422
+   after every deploy.
+8. **Release-gate sign-off remains human.** Machine evidence packages exist in
    `docs/gate-reviews/`; counsel, security, provider and product decisions do not.
 
 ---
