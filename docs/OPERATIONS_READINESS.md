@@ -163,10 +163,18 @@ independent accessibility audit.
    verify with `GET /api/v1/trading/gates` before any public launch. The docs
    must be updated to reflect the operator decision rather than silently
    changed in code.
-4. **No staging evidence.** CI provisions a throwaway PostgreSQL service, but a
+4. **Shared `bun` binary on the VPS.** Other app processes map
+   `/home/ubuntu/.bun/bin/bun`, so `setup-bun` with `bun-version: latest` fails
+   with `ETXTBSY` when it tries to replace the binary. Both workflows now pin
+   `1.4.5` (the installed version); bump deliberately, and never kill unrelated
+   processes to work around this.
+5. **Post-restart readiness race.** The billing check originally ran milliseconds
+   after restart and could hit a not-yet-bound port. It now retries for up to
+   60 seconds, mirroring the health check.
+6. **No staging evidence.** CI provisions a throwaway PostgreSQL service, but a
    persistent staging environment with its own migration history is not
    evidenced in the repo.
-5. **Release-gate sign-off remains human.** Machine evidence packages exist in
+7. **Release-gate sign-off remains human.** Machine evidence packages exist in
    `docs/gate-reviews/`; counsel, security, provider and product decisions do not.
 
 ---
