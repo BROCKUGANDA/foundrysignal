@@ -109,7 +109,10 @@ describe("callback", () => {
   test("the same verified email links to the existing account, never a duplicate", async () => {
     const email = `oauth-existing-${Date.now()}@test.local`;
     const user = await db.user.create({
-      data: { email, emailHash: emailHash(email), passwordHash: await hashPassword("existing-password-123") },
+      data: {
+        email, emailHash: emailHash(email), passwordHash: await hashPassword("existing-password-123"),
+        emailVerifiedAt: new Date(),
+      },
     });
     createdUserIds.push(user.id);
     const { state } = await begin("GOOGLE");
@@ -151,13 +154,31 @@ describe("callback", () => {
   test("an account with TOTP gets a challenge and no session", async () => {
     const email = `oauth-mfa-${Date.now()}@test.local`;
     const user = await db.user.create({
-      data: { email, emailHash: emailHash(email), passwordHash: await hashPassword("existing-password-123") },
+      data: {
+        email, emailHash: emailHash(email), passwordHash: await hashPassword("existing-password-123"),
+        emailVerifiedAt: new Date(),
+      },
     });
     createdUserIds.push(user.id);
     const started = await mfa.startEnrollment({
       userId: user.id, password: "existing-password-123",
       currentPasswordHash: user.passwordHash,
       verifyPassword: (p: string, h: string) => import("bcryptjs").then((m) => m.default.compare(p, h)),
+    });
+    const { totpAt } = await import("@/lib/auth/totp");
+    await mfa.confirmEnrollment({ userId: user.id, code: totpAt(started.secret, Math.floor(Date.now() / 1000)) });
+
+    const before = await db.session.count({ where: { userId: user.id } });
+    const { state } = await begin("GITHUB");
+    const result = await oauth.completeOAuth({
+      provider: "GITHUB", code: "gh-code", state, ip: "x", fetchImpl: fakeFetch("GITHUB", email),
+    });
+    expect(result.mfaRequired).toBe(true);
+    expect(result.challenge).toBeTruthy();
+    expect(await db.session.count({ where: { userId: user.id } })).toBe(before);
+  });
+});
+yPassword: (p: string, h: string) => import("bcryptjs").then((m) => m.default.compare(p, h)),
     });
     const { totpAt } = await import("@/lib/auth/totp");
     await mfa.confirmEnrollment({ userId: user.id, code: totpAt(started.secret, Math.floor(Date.now() / 1000)) });
