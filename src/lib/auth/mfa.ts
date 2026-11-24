@@ -22,6 +22,7 @@ import QRCode from "qrcode";
 import { db } from "@/lib/db";
 import { ApiHttpError } from "@/lib/contracts/http";
 import { recordAudit } from "@/lib/domain/shared/audit";
+import { rateLimit } from "@/lib/rate-limit";
 import { createSession, sha256 } from "./session";
 import {
   DEFAULT_TOTP_PARAMS,
@@ -209,6 +210,16 @@ export async function verifyMfaChallenge(input: {
   }
   if (token.usedAt || token.expires < new Date()) {
     throw new ApiHttpError("VALIDATION_FAILED", "That second-factor challenge has expired or was already used. Sign in again.", false);
+  }
+  // Throttle per account, not per challenge: a password holder can mint fresh
+  // challenges at will, so a challenge-keyed counter alone does not bound guesses.
+  const userGate = await rateLimit({
+    key: `mfa-user:${token.identifier}`,
+    limit: MAX_CODE_ATTEMPTS,
+    windowMs: CODE_ATTEMPT_WINDOW_MS,
+  });
+  if (!userGate.allowed) {
+    throw new ApiHttpError("RATE_LIMITED", "Too many incorrect authentication codes. Try again later.", true);
   }
   // Consume before doing factor work: a challenge authenticates exactly one
   // attempt, so an online guesser cannot retry against the same token.
