@@ -18,7 +18,7 @@ jobs:
       APP_DIR: /home/ubuntu/ai-azimara-foundrysignal
       SERVICE: foundrysignal
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Pin the version that is already installed on the VPS. `latest` forces
       # setup-bun to re-download and copy the binary on every run, which fails
       # with ETXTBSY while other app processes have /home/ubuntu/.bun/bin/bun
