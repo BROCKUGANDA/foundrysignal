@@ -21,12 +21,13 @@ jobs:
           POSTGRES_USER: foundrysignal
           POSTGRES_PASSWORD: fs_local_2026
           POSTGRES_DB: foundrysignal
-        ports: ["5433:5432"]
+        # 5433/55433/55434 are occupied on the self-hosted VPS by other projects.
+        ports: ["55435:5432"]
         options: >-
           --health-cmd "pg_isready -U foundrysignal"
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
-      DATABASE_URL: postgresql://foundrysignal:fs_local_2026@127.0.0.1:5433/foundrysignal
+      DATABASE_URL: postgresql://foundrysignal:fs_local_2026@127.0.0.1:55435/foundrysignal
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
