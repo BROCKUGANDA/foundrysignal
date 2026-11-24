@@ -37,7 +37,10 @@ jobs:
       - run: bun x prisma generate
       - run: bun run typecheck
       - run: bun run lint
-      - run: bun test
+      # --isolate gives every test file a fresh module registry. Without it,
+      # a global mock.module() in one file leaks into every other file in the
+      # same process (a real failure we hit in the checkout boundary tests).
+      - run: bun run test
       - run: bun run build
       - name: Secret scan
         if: github.event_name == 'pull_request'

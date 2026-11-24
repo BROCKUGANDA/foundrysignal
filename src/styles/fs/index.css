@@ -8,6 +8,7 @@
 @import "./tokens.css";
 @import "./themes.css";
 @import "./base.css";
+@import "./responsive.css";
 
 @custom-variant dark (&:is(.dark *));
 @custom-variant light (&:is(.light *));

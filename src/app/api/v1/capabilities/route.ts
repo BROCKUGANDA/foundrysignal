@@ -74,19 +74,22 @@ export const GET = handler(async ({ requestId }) => {
         providers,
         requiredEnv: available ? [] : ["GITHUB_OAUTH_CLIENT_ID/GITHUB_OAUTH_CLIENT_SECRET", "GOOGLE_OAUTH_CLIENT_ID/GOOGLE_OAUTH_CLIENT_SECRET"],
         note: available
-          ? "OAuth client credentials present; interactive sign-in requires provider callback registration and route enablement in this deployment."
+          ? "Interactive GitHub/Google sign-in is enabled. Register these callback URLs with each provider: /api/v1/auth/oauth/<provider>/callback (state + PKCE S256; verified email only)."
           : "No OAuth provider credentials configured.",
       };
     })(),
     mfa: (() => {
-      const available = !!(process.env.MFA_ENCRYPTION_KEY || process.env.MFA_PROVIDER_KEY);
+      // TOTP is implemented in-process and needs the encryption key to store
+      // secrets at rest. MFA_PROVIDER_KEY was a placeholder for an external
+      // provider that does not exist here, so it must not report availability.
+      const available = !!process.env.MFA_ENCRYPTION_KEY;
       return {
         available,
-        level: available ? "CONFIGURED" : "NOT_CONFIGURED",
+        level: available ? "CONFIGURED_TOTP" : "NOT_CONFIGURED",
         requiredEnv: available ? [] : ["MFA_ENCRYPTION_KEY"],
         note: available
-          ? "MFA encryption key configured; TOTP enrollment/verification depends on user-level setup."
-          : "No MFA key configured.",
+          ? "TOTP enrollment, verification, recovery codes and login step-up are active. Users opt in under Settings → Security."
+          : "TOTP MFA requires MFA_ENCRYPTION_KEY; enrollment is unavailable and enrolled accounts fail closed until it is set.",
       };
     })(),
   };
@@ -101,6 +104,7 @@ export const GET = handler(async ({ requestId }) => {
           solanaOnchain: { available: capabilities.solanaOnchain.available },
           marketData: { available: capabilities.marketData.available },
           email: { available: capabilities.email.available },
+          oauth: { available: capabilities.oauth.available, providers: capabilities.oauth.providers },
         },
         requestId
       ),

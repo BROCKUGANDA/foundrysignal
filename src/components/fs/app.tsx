@@ -15,6 +15,7 @@ import { AuthView } from "@/components/fs/auth-view";
 import { AcceptInviteView } from "@/components/fs/accept-invite";
 import { AppShell } from "@/components/fs/app-shell";
 import { DiscoverView } from "@/components/fs/discover-view";
+import { RoleDashboard } from "@/components/fs/role-dashboard";
 import { NotFoundView } from "@/components/fs/not-found-view";
 import { BootSplash, LoadingState, OfflineState } from "@/components/fs";
 import { useWalletAvailability } from "@/lib/client/wallet";
@@ -192,7 +193,7 @@ function FoundrySignalRouter() {
     (next: AccountState) => {
       setAccount(next);
       qc.invalidateQueries();
-      navigate("discover");
+      navigate("dashboard");
     },
     [qc, navigate],
   );
@@ -252,7 +253,8 @@ function FoundrySignalRouter() {
     <>
       <OfflineBanner />
       <AppShell account={account} onLogout={onLogout} alertCount={alertCount}>
-        {(match.section === "discover" || match.section === "home") && (
+        {(match.section === "dashboard" || match.section === "home" || match.section === "auth") && <RoleDashboard account={account} />}
+        {match.section === "discover" && (
           <DiscoverView account={account} />
         )}
         {match.section === "dossier" && match.params.slug ? (

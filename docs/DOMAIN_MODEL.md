@@ -8,6 +8,10 @@
 - **Workspace** — tenant root. Personal workspace auto-created at registration; team workspaces opt-in.
 - **Membership** — (workspaceId, userId, role) unique; roles OWNER/ADMIN/ANALYST/VIEWER.
 - **AuditEvent** — append-only record of privileged actions with actor, target, diff summary.
+- **MfaCredential** — one per user. Holds an AES-256-GCM-encrypted TOTP secret (IV + tag, user-id AAD), algorithm/digits/step, `enabled` (false = unconfirmed enrollment), `lastUsedCounter` replay guard, enrollment/disable timestamps. **No plaintext secret is ever persisted.**
+- **MfaRecoveryCode** — credentialId + SHA-256 code hash + usedAt. Plaintext is shown once at enrollment/regeneration; codes are single-use and regenerating invalidates all prior codes.
+- **MFA_CHALLENGE VerificationToken** — single-use, 5-minute token issued after a correct password (or OAuth assertion) for MFA users. It is *not* a session: no authenticated route is reachable until it is exchanged with a second factor.
+- **OAuthState** — single-use, 10-minute authorization request: hashed state, provider, server-held PKCE verifier and optional invitation token. Never stores access tokens or provider profile data.
 
 ### Venture registry
 - **Venture** — canonical company record. Name, slug (unique), category, ecosystem (SOLANA default), website, description, status (ACTIVE/MERGED/DEFUNCT/UNKNOWN), visibility. **No seeded/fabricated ventures; registry grows only through ingestion or admin entry.**

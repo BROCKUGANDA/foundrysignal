@@ -11,6 +11,7 @@ const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  deploymentId: process.env.DEPLOYMENT_ID,
   poweredByHeader: false,
   typescript: {
     // Full `tsc --noEmit` runs in CI/audit; the build must not mask config errors,

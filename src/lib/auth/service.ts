@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/domain/shared/audit";
 import { sendVerificationEmail } from "@/lib/domain/email/service";
 import { randomBytes } from "crypto";
 import { z } from "zod";
+import { issueMfaChallenge } from "./mfa";
 
 export const RegisterSchema = z.object({
   email: z.string().email().max(320),
@@ -14,6 +15,10 @@ export const RegisterSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   // Registration persona. Optional: defaults to VENTURE_INVESTOR.
   userType: z.enum(USER_TYPES).default("VENTURE_INVESTOR"),
+  // Clickwrap acceptance: the client must post an explicit affirmative action
+  // and the exact version of the terms shown at that moment.
+  acceptTerms: z.boolean().refine((v) => v === true, "You must accept the Terms of Service."),
+  termsVersion: z.string().min(1).max(40),
 });
 
 /**
@@ -125,7 +130,7 @@ function checkRegisterThrottle(ip: string): void {
 
 export async function registerUser(input: unknown, ip: string) {
   checkRegisterThrottle(ip);
-  const { email, password, name, userType } = RegisterSchema.parse(input);
+  const { email, password, name, userType, termsVersion } = RegisterSchema.parse(input);
   const eHash = emailHash(email);
   const existing = await db.user.findUnique({ where: { emailHash: eHash } });
   if (existing) throw new ApiHttpError("CONFLICT", "An account with this email already exists.", false);
@@ -138,6 +143,8 @@ export async function registerUser(input: unknown, ip: string) {
       passwordHash: await hashPassword(password),
       platformRole: "USER",
       userType,
+      termsAcceptedAt: new Date(),
+      termsVersion,
     },
   });
 
@@ -190,10 +197,19 @@ export async function loginUser(input: unknown, ip: string) {
     throw new ApiHttpError("UNAUTHENTICATED", "Invalid email or password.", false);
   }
   clearLoginThrottle(email, ip);
+
+  // A correct password is step one only for accounts with an enabled second
+  // factor. No session is created here: the client must exchange the
+  // single-use challenge for one via /api/v1/auth/mfa-verify.
+  const challenge = await issueMfaChallenge(user.id);
+  if (challenge) {
+    return { mfaRequired: true as const, challenge, userId: user.id };
+  }
+
   const firstMembership = await db.membership.findFirst({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
   await createSession(user.id, firstMembership?.workspaceId);
   await recordAudit({ actorId: user.id, action: "AUTH_LOGIN", targetType: "USER", targetId: user.id, summary: "Signed in", metadata: { ip } });
-  return { userId: user.id, workspaceId: firstMembership?.workspaceId ?? null };
+  return { mfaRequired: false as const, userId: user.id, workspaceId: firstMembership?.workspaceId ?? null };
 }
 
 export async function logoutUser(userId?: string) {
@@ -229,6 +245,9 @@ export async function getAccountState(userId: string) {
 export async function requestAccountDeletion(userId: string) {
   await db.user.update({ where: { id: userId }, data: { status: "DELETED", deletedAt: new Date() } });
   await db.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+  await db.verificationToken.deleteMany({
+    where: { identifier: userId, action: "MFA_CHALLENGE", usedAt: null },
+  });
   await recordAudit({ actorId: userId, action: "ACCOUNT_DELETE", targetType: "USER", targetId: userId, summary: "Account deleted" });
 }
 

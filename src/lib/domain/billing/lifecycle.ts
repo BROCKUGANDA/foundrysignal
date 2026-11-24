@@ -16,9 +16,12 @@
 import { registerJob, enqueue } from "@/lib/jobs/queue";
 import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/domain/email/service";
+import { getCheckoutConfig, verifyCheckoutIntent } from "./crypto";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REMINDER_WINDOW_DAYS = 7;
+const WATCH_INTERVAL_MS = 2 * 60 * 1000;
+const WATCH_BATCH = 10;
 
 function siteUrl(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://foundrysignal.aiazimara.com").replace(/\/+$/, "");
@@ -100,5 +103,78 @@ export async function ensureBillingSweepScheduled(): Promise<void> {
     idempotencyKey: `billing-sweep-${dayKey()}`,
     payload: { scheduledFor: dayKey() },
     maxAttempts: 5,
+  });
+}
+
+/**
+ * Checkout watcher. The client verifies its own payment in the foreground, but
+ * a payer can close the tab before that call — this job closes that gap by
+ * settling any pending intent whose transfer is already onchain. It also marks
+ * stale pending intents EXPIRED so the UI never shows an actionable payment
+ * window that has actually elapsed.
+ *
+ * Self-rescheduling with a time-bucketed idempotency key: overlapping boots
+ * cannot create duplicate watchers, and a missed tick is recovered on boot.
+ */
+registerJob("billing_intent_watcher", async (ctx) => {
+  if (!getCheckoutConfig().configured) {
+    ctx.log("checkout watcher skipped — PAYOUT_WALLET not configured");
+    await scheduleNextWatch();
+    return;
+  }
+
+  const now = new Date();
+  // Expire windows that elapsed without settlement (client verifies on demand,
+  // but a closed tab must not leave a PENDING row forever).
+  const expired = await db.cryptoPaymentIntent.updateMany({
+    where: { status: "PENDING", expiresAt: { lt: now } },
+    data: { status: "EXPIRED" },
+  });
+
+  const pending = await db.cryptoPaymentIntent.findMany({
+    where: { status: "PENDING", expiresAt: { gte: now } },
+    orderBy: { createdAt: "asc" },
+    take: WATCH_BATCH,
+  });
+
+  let confirmed = 0;
+  for (const intent of pending) {
+    try {
+      const result = await verifyCheckoutIntent({
+        workspaceId: intent.workspaceId,
+        userId: intent.userId,
+        memo: intent.memo,
+      });
+      if (result.status === "CONFIRMED") confirmed += 1;
+    } catch (err) {
+      // One bad RPC response must not stop the rest of the batch. The job's
+      // own retry/backoff still handles a total failure.
+      ctx.log("checkout watcher intent failed", { memo: intent.memo, error: String(err).slice(0, 200) });
+    }
+  }
+
+  ctx.log("checkout watcher done", { checked: pending.length, confirmed, expired: expired.count });
+  await scheduleNextWatch();
+});
+
+async function scheduleNextWatch(): Promise<void> {
+  const bucket = Math.floor(Date.now() / WATCH_INTERVAL_MS);
+  await enqueue({
+    kind: "billing_intent_watcher",
+    idempotencyKey: `billing-intent-watcher-${bucket}`,
+    payload: { scheduledFor: new Date(Date.now() + WATCH_INTERVAL_MS).toISOString() },
+    delayMs: WATCH_INTERVAL_MS,
+    maxAttempts: 3,
+  });
+}
+
+/** Boot-time kick-off for the checkout watcher (safe when checkout is unconfigured). */
+export async function ensureBillingWatcherScheduled(): Promise<void> {
+  await enqueue({
+    kind: "billing_intent_watcher",
+    idempotencyKey: `billing-intent-watcher-${Math.floor(Date.now() / WATCH_INTERVAL_MS)}`,
+    payload: { scheduledFor: new Date(Date.now() + WATCH_INTERVAL_MS).toISOString() },
+    delayMs: WATCH_INTERVAL_MS,
+    maxAttempts: 3,
   });
 }

@@ -79,12 +79,21 @@ describe("role ranking", () => {
 describe("registration personas", () => {
   test("registration defaults to VENTURE_INVESTOR and accepts every persona", async () => {
     const { RegisterSchema } = await import("@/lib/auth/service");
-    const base = { email: "persona@test.local", password: "test-password-123" };
+    const base = { email: "persona@test.local", password: "test-password-123", acceptTerms: true, termsVersion: "2026-11-24" };
     expect(RegisterSchema.parse(base).userType).toBe("VENTURE_INVESTOR");
     for (const userType of ["FOUNDER", "RESEARCH_ANALYST", "LIMITED_PARTNER", "OTHER"]) {
       expect(RegisterSchema.parse({ ...base, userType }).userType).toBe(userType);
     }
     expect(() => RegisterSchema.parse({ ...base, userType: "PLATFORM_ADMIN" })).toThrow();
+  });
+
+  test("registration requires explicit terms acceptance with a version", async () => {
+    const { RegisterSchema } = await import("@/lib/auth/service");
+    const base = { email: "terms@test.local", password: "test-password-123" };
+    expect(() => RegisterSchema.parse({ ...base, termsVersion: "2026-11-24" })).toThrow();
+    expect(() => RegisterSchema.parse({ ...base, acceptTerms: true })).toThrow();
+    expect(RegisterSchema.parse({ ...base, acceptTerms: true, termsVersion: "2026-11-24" }).termsVersion)
+      .toBe("2026-11-24");
   });
 
   test("self-service account update cannot set role fields", async () => {

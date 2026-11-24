@@ -303,9 +303,13 @@ describe("theme switching", () => {
   const themeSrc = readFileSync(join(ROOT, "src/components/fs/theme.tsx"), "utf8");
 
   test("bootstrap script applies the class before first paint", () => {
-    expect(themeSrc).toContain("THEME_BOOTSTRAP");
-    expect(themeSrc).toContain("classList.remove");
-    expect(themeSrc).toContain("classList.add");
+    // The pre-paint script is intentionally a server-owned literal in layout.tsx
+    // (a client-module import here suspends hydration inside <head>). The
+    // dedicated theme-hydration.test.ts covers its runtime behaviour.
+    const layoutSrc = readFileSync(join(ROOT, "src/app/layout.tsx"), "utf8");
+    expect(layoutSrc).toContain("THEME_BOOTSTRAP");
+    expect(layoutSrc).toContain("classList.remove");
+    expect(layoutSrc).toContain("classList.add");
   });
 
   test("supports an explicit system mode", () => {
