@@ -165,4 +165,254 @@ The smoke output exposed the same duplication class one level down: every collec
 - `getOrCreateCanonicalClaim()` in the evidence engine — a statement about a subject exists once; collectors, intake and the founder-attribution flow now reuse it (all four former `claim.create` sites converted).
 - `scripts/dedupe-claims.ts` merged the historical duplicates (22 → 5 canonical claims; evidence links reassigned, nothing lost).
 - Live verification (`scripts/verify-canonical-claims.ts`): real `collect_solana_mint` job enqueued through the production queue → new evidence record persisted (47 total) with **zero new claim rows** (PASS) — after a dev-server restart, since the instrumentation-registered worker binds collectors at boot.
-- Final canonical graph: website identity claim (UNVERIFIED — only self-asserted evidence exists, honest), mint-authority claim (SUPPORTED, 11 evidence records), 3 repository-association claims (SUPPORTED).
+- Final canonical graph: website identity claim (UNVERIFIED - only self-asserted evidence exists, honest), mint-authority claim (SUPPORTED, 11 evidence records), 3 repository-association claims (SUPPORTED).
+
+---
+
+## 2026-11-20 — Phase Zero re-audit & quality-gate restoration
+
+### Scope
+Mandate re-applied against the existing tree. All 9 required planning docs and
+all 8 sprints were already present; per Execution Rule 3 nothing was rebuilt.
+Work focused on establishing a truthful, reproducible green build.
+
+### Environment finding
+The machine's native PostgreSQL 17 (port 5433) is a separate instance whose
+roles do not match the CI/dev credentials (`foundrysignal`/`fs_local_2026`);
+Docker Desktop is installed but its daemon is not running. This is an
+environment condition, not a product defect. CI provisions a throwaway
+`postgres:18` service with those credentials (`.github/workflows/ci.yml`).
+
+### Defects found and fixed
+1. **Test isolation (real failure).** `tests/checkout-atomic.test.ts` calls
+   `mock.module("@/lib/db", ...)`. In Bun this mock is process-global and
+   static imports in other test files bind to it at load time, so 12 otherwise
+   correct DB tests failed with `db.plan.upsert is not a function`, etc.
+   Verified that neither `mock.restore()` nor an `afterAll` re-mock fixes it
+   (Bun preloads all files). Fix: canonical test command is now
+   `bun test --isolate` (fresh module registry per file) in `package.json`,
+   CI and README. Result: 205 pass / 0 fail.
+2. **Stale test after uncommitted theme refactor.** `THEME_BOOTSTRAP` was moved
+   from `theme.tsx` into `layout.tsx` as a server-owned literal (hydration fix
+   in the working tree). The tracked `design-system.test.ts` still asserted it
+   in `theme.tsx`; updated to the new location. The new
+   `theme-hydration.test.ts` covers the runtime behaviour.
+3. **Regenerated Prisma client** (`bun x prisma generate`) so the checked-in
+   client matches `schema.prisma`.
+
+### Files modified this phase
+- `package.json` — added `test: bun test --isolate`.
+- `.github/workflows/ci.yml` — use `bun run test` with rationale comment.
+- `README.md` — updated command, count, and `--isolate` rationale.
+- `tests/design-system.test.ts` — reconciled stale bootstrap assertion.
+
+All pre-existing uncommitted work (role dashboard, responsive CSS, checkout
+boundary tests, deployment scripts, etc.) was left intact.
+
+### Verification (actually executed)
+- Isolated PG 17 cluster on port 55432 with CI credentials; all 4 Prisma
+  migrations applied cleanly.
+- `bun run typecheck` — exit 0.
+- `bun run lint` — exit 0.
+- `bun run test` — **205 pass / 0 fail**, 548 assertions, 13 files.
+- `bun run build` — green (standalone output + asset copy).
+- One benign caught FK-constraint log from `recordAudit` in a checkout test
+  (test uses a synthetic actor id); audit is best-effort and the tests pass.
+
+### Remaining blockers (unchanged, honest)
+- OAuth sign-in and TOTP MFA flows — credentials present, flows not implemented.
+- BullMQ driver and separate worker process — DB queue in production now.
+- Legal counsel sign-off; staging/prod migration application; live USDC test.
+- Operator rotation of deployment keys (out of band).
+
+### Recommended next step
+Implement TOTP MFA enrollment/verification (self-contained, security-critical,
+closes the largest identity gap without external provider setup), followed by
+OAuth callback flows. Both require their own test suites before release.
+
+---
+
+## 2026-11-20 — Sprint: TOTP MFA enrollment & verification
+
+### Features implemented
+- **TOTP primitive** (`src/lib/auth/totp.ts`): dependency-free RFC 6238/4226
+  HOTP/TOTP, strict base32, ±1-step skew, timing-safe compare, replay counter,
+  recovery-code generation/hashing, otpauth:// URI.
+- **MFA domain service** (`src/lib/auth/mfa.ts`): AES-256-GCM secret encryption
+  with user-id AAD, enrollment (password re-auth), confirmation, single-use
+  5-minute login challenge, step-up verification, replay protection, one-time
+  recovery codes, regeneration, disable, per-purpose attempt throttling,
+  fail-closed configuration, audit events.
+- **Login gating** (`src/lib/auth/service.ts`): a correct password for an MFA
+  account issues a challenge and creates **no session**.
+- **API**: `POST /api/v1/auth/mfa-verify`; `GET /api/v1/account/mfa`;
+  `POST /api/v1/account/mfa/{enroll,confirm,recovery,disable}`.
+- **UI**: second-factor step in `auth-view.tsx` (code/recovery toggle); full
+  enrollment/management card in the Security section of `settings-view.tsx`
+  with loading, empty, error, not-configured and one-time-code states.
+- **Capability registry** now reports `CONFIGURED_TOTP` only when the
+  encryption key exists (`MFA_PROVIDER_KEY` no longer falsely implies support).
+
+### Files created
+- `src/lib/auth/totp.ts`, `src/lib/auth/mfa.ts`
+- `src/app/api/v1/account/mfa/route.ts`, `src/app/api/v1/account/mfa/[action]/route.ts`
+- `tests/totp.test.ts`, `tests/mfa.test.ts`, `scripts/smoke-mfa.ts`
+- `prisma/migrations/20261120093830_mfa_totp/migration.sql`
+
+### Files modified
+- `prisma/schema.prisma` — `MfaCredential`, `MfaRecoveryCode`, `User.mfaCredentials`
+- `src/lib/auth/service.ts` — login challenge + challenge cleanup on deletion
+- `src/app/api/v1/auth/[action]/route.ts` — `mfa-verify`, challenge cleanup on reset
+- `src/app/api/v1/capabilities/route.ts`, `src/components/fs/auth-view.tsx`,
+  `src/components/fs/settings-view.tsx`
+- `package.json` / `bun.lock` — `qrcode` + `@types/qrcode` (server-side QR only)
+- `.env.example`, `README.md`, `KNOWN_LIMITATIONS.md`, `SECURITY_MODEL.md`
+
+### Database migration
+`20261120093830_mfa_totp` — additive only: two new tables with unique FKs and
+indexes. rollback = drop `MfaRecoveryCode`, then `MfaCredential`. No existing
+rows are altered.
+
+### Verification (actually executed)
+- `tests/totp.test.ts` — **15 pass**: RFC 6238 vectors for SHA1/SHA256/SHA512,
+  RFC 4226 HOTP vector, base32 vectors, skew/replay/malformed input.
+- `tests/mfa.test.ts` — **14 pass** against real PostgreSQL: ciphertext-only
+  storage, AAD transplant rejection, wrong password/code, confirmation + one-time
+  recovery codes + session revocation, challenge issuance without session,
+  single-use challenge, replay rejection, recovery single-use, regeneration,
+  disable, fail-closed missing key, cross-account scoping.
+- Full suite `bun run test` — **234 pass / 0 fail**, 675 assertions, 15 files.
+- `bun run typecheck`, `bun run lint` — clean. `bun run build` — green; new
+  route bundles present in `.next/server/app/api/v1/account/mfa`.
+- Live HTTP smoke (`bun scripts/smoke-mfa.ts`) — 13/13 checks passed against a
+  production-built server: 401 guard, registration, status, enrollment, wrong
+  code, confirmation, status update, password login → challenge with no session,
+  challenge alone denied, factor exchange → session, account access, replay denied.
+
+### Environment variables
+- `MFA_ENCRYPTION_KEY` — required for TOTP (64-hex raw AES key or passphrase).
+  Without it the capability reports NOT_CONFIGURED and all MFA paths fail closed.
+
+### Known limitations
+- MFA attempt counters are in-process; the cross-process DB write limiter is the
+  second layer. A shared counter store is a follow-up.
+- The QR is generated server-side and delivered as an inline SVG data URL; it is
+  not cached and contains only the otpauth URI.
+- OAuth sign-in remains unimplemented.
+
+### Recommended next step
+Implement OAuth callback flows (GitHub/Google) with state/PKCE validation,
+account linking by verified email only, and dedicated tests; then run the legal
+and operational review gates.
+
+---
+
+## 2026-11-20 — Sprint: OAuth sign-in (GitHub / Google)
+
+### Features implemented
+- `src/lib/auth/oauth.ts`: authorization-code + PKCE S256; 256-bit random state
+  stored only as SHA-256, single-use, 10-minute expiry; redirect_uri derived
+  from `NEXT_PUBLIC_SITE_URL`; token exchange and provider userinfo with
+  injected fetch; verified-email-only account linking; new-account creation with
+  unguessable password hash and personal workspace; TOTP step-up for enrolled
+  accounts; best-effort invitation continuation; audit events.
+- Routes: `GET /api/v1/auth/oauth/{provider}/start` (303 to provider),
+  `GET /api/v1/auth/oauth/{provider}/callback` (generic error redirects, HttpOnly
+  challenge cookie for MFA), `POST /api/v1/auth/mfa-challenge` (cookie pickup).
+- Capability registry: public OAuth availability + provider list; accurate note.
+- UI: provider buttons on the auth view, OAuth error notices, and pickup of the
+  HttpOnly challenge into the existing MFA step.
+
+### Files created
+- `src/lib/auth/oauth.ts`
+- `src/app/api/v1/auth/oauth/[provider]/start/route.ts`,
+  `src/app/api/v1/auth/oauth/[provider]/callback/route.ts`
+- `tests/oauth.test.ts`, `scripts/smoke-oauth.ts`
+- `prisma/migrations/20261120095949_oauth_state/migration.sql`
+
+### Files modified
+- `prisma/schema.prisma` — `OAuthState`
+- `src/app/api/v1/auth/[action]/route.ts` — `mfa-challenge`
+- `src/app/api/v1/capabilities/route.ts`, `src/lib/client/api.ts`,
+  `src/components/fs/auth-view.tsx`
+- `.env.example`, `README.md`, `KNOWN_LIMITATIONS.md`, `SECURITY_MODEL.md`,
+  `DOMAIN_MODEL.md`
+
+### Database migration
+`20261120095949_oauth_state` — additive: one `OAuthState` table, unique index
+on `stateHash`, index on `expires`. Rollback = drop the table. No existing rows
+are altered.
+
+### Verification (actually executed)
+- `tests/oauth.test.ts` — **9 pass**: RFC 7636 PKCE vector, hashed state storage,
+  site-derived redirect URI, new account + session, verified-email linking with
+  no duplicate, unverified-email rejection, state single-use, cross-provider
+  state rejection, TOTP step-up with no session.
+- Full suite `bun run test` — **243 pass / 0 fail**, 711 assertions, 16 files.
+- `bun run typecheck`, `bun run lint` clean; `bun run build` green.
+- Live route smoke (`bun scripts/smoke-oauth.ts`) — 6/6 checks: public capability
+  advertisement, 303 authorization redirect with state + PKCE S256, 43-char
+  state, generic error redirect on invalid state, honest provider-denial
+  redirect, empty challenge pickup without a callback cookie.
+
+### Remaining external dependency
+- **Provider callback registration + real credentials.** The token exchange is
+  verified with injected provider responses, not against live GitHub/Google; an
+  operator must register the callback URLs and perform one live sign-in test.
+
+### Recommended next step
+Complete the live provider sign-in check with registered callback URLs, then
+proceed to the legal/operational review gates (trading, paid research, geography).
+
+---
+
+## 2026-11-24 — Commercialization hardening & testability restoration
+
+### Scope
+Operator mandate: make the product ready for public commercialization, keep the
+trading flag armed as an explicit operator decision, and leave the platform
+fully operational/testable. All three workstreams (code hardening, legal/operator
+pack, deployment/ops runbook) were executed.
+
+### Quality gate restoration
+- The checked-in `.env` pointed at a PostgreSQL instance that denied access, so
+  `bun run test` produced 36 false failures. A fresh throwaway PostgreSQL 17
+  cluster was created in the approved temp folder, migrations applied, and
+  `.env` repointed at it. Result: **244 pass / 0 fail**, 714 assertions.
+- `bun run typecheck` and `bun run lint` clean; `bun run build` green with the
+  new migration and routes.
+
+### Code changes
+- **Terms clickwrap:** `RegisterSchema` now requires explicit `acceptTerms=true`
+  and a `termsVersion`; credential registrations persist `termsAcceptedAt` +
+  `termsVersion` (migration `20261124000000_terms_acceptance`). The auth view
+  adds an affirmative checkbox with links to `/terms` and `/privacy`. OAuth
+  accounts remain `NULL` and are documented as a gap.
+- **Checkout watcher:** new `billing_intent_watcher` job runs every two minutes,
+  settles pending USDC intents server-side (so a paid transfer is not stranded
+  when the payer closes the tab), expires stale pending intents, and
+  self-reschedules with a bucketed idempotency key. Boot scheduling added to
+  instrumentation.
+- **Accessibility surface:** new public `/accessibility` page with an honest
+  no-conformance statement, implemented practices, known gaps and an audit
+  plan. Wired into routes, static params, sitemap, metadata, footer and legal
+  siblings.
+- **Repo hygiene:** `.output.txt` debug artifact ignored.
+
+### Documents created
+- `docs/COMMERCIALIZATION_LEGAL_PACK.md` — seven sign-off decisions, counsel
+  brief, processor disclosure draft, sanctions posture options, accessibility
+  audit plan, operator pre-launch checklist.
+- `docs/OPERATIONS_READINESS.md` — topology, launch checklist, backup/restore
+  drill plan, key rotation runbook, monitoring/alert set, live verification
+  commands, known gaps including the trading-flag divergence.
+
+### Trading flag
+`TRADING_ENABLED=true` remains armed per the operator decision in `f3cf2d1`.
+Documentation now states the divergence explicitly instead of claiming the
+flag is unset. Execution still requires all four gates APPROVED and the kill
+switch CLEAR.
+
+### Verification
+`bun run typecheck`, `bun run lint`, `bun run test` (244/244), `bun run build`
+all green against a fresh PostgreSQL instance with all migrations applied.

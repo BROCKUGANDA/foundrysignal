@@ -63,3 +63,5 @@ prisma/db/
 _vc.mjs
 # platform scripts
 .zscripts/
+# local debug output (React fiber dumps etc.)
+.output.txt

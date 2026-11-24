@@ -92,7 +92,7 @@ export type Capabilities = {
   email: { available: boolean; level: string; requiredEnv: string[] };
   aiResearch: { available: boolean; level: string; requiredEnv: string[] };
   heliusIndexed: { available: boolean; level: string; requiredEnv: string[] };
-  oauth: { available: boolean; level: string; requiredEnv: string[] };
+  oauth: { available: boolean; level: string; requiredEnv: string[]; providers?: string[] };
   mfa: { available: boolean; level: string; requiredEnv: string[] };
 };
 

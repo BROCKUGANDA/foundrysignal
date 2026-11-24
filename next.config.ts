@@ -11,7 +11,21 @@ const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  deploymentId: process.env.DEPLOYMENT_ID,
   poweredByHeader: false,
+  // Image delivery: negotiate AVIF/WebP per browser via the Accept header and
+  // expose phone/tablet widths in srcset so mobile clients never download a
+  // desktop-sized asset. SVGs are served as-is (optimizing them adds no value
+  // and script-bearing uploads must never reach the optimizer).
+  images: {
+    formats: ["image/avif", "image/webp"],
+    deviceSizes: [320, 360, 390, 414, 480, 640, 768, 820, 1024, 1280, 1536, 1920, 2048],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    minimumCacheTTL: 86400,
+    dangerouslyAllowSVG: false,
+    contentDispositionType: "attachment",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
   typescript: {
     // Full `tsc --noEmit` runs in CI/audit; the build must not mask config errors,
     // so type errors are NOT ignored — they fail the build.

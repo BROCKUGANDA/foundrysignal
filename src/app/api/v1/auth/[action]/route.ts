@@ -7,6 +7,8 @@ import { db } from "@/lib/db";
 import { sendPasswordResetEmail } from "@/lib/domain/email/service";
 import { recordAudit } from "@/lib/domain/shared/audit";
 import { clientIp } from "@/lib/auth/client-ip";
+import { verifyMfaChallenge } from "@/lib/auth/mfa";
+import { cookies } from "next/headers";
 
 function meta(requestId: string) {
   return { requestId, timestamp: new Date().toISOString(), version: "v1" };
@@ -18,6 +20,11 @@ const ResetSchema = z.object({
   password: z.string().min(10, "Password must be at least 10 characters.").max(200),
 });
 const RequestResetSchema = z.object({ email: z.string().email().max(320) });
+const MfaVerifySchema = z.object({
+  challenge: z.string().min(16).max(512),
+  code: z.string().regex(/^\d{6,8}$/).optional(),
+  recoveryCode: z.string().min(8).max(64).optional(),
+});
 
 /** Consumes a VERIFY_EMAIL token and marks the account's email verified.
  * Already-used tokens are treated as success (mail clients may prefetch
@@ -67,6 +74,10 @@ async function resetPasswordWithToken(body: unknown) {
   await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(parsed.data.password) } });
   await db.verificationToken.update({ where: { id: record.id }, data: { usedAt: new Date() } });
   await db.session.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+  // A challenge issued before the reset must not survive the credential change.
+  await db.verificationToken.deleteMany({
+    where: { identifier: user.id, action: "MFA_CHALLENGE", usedAt: null },
+  });
   await recordAudit({
     actorId: user.id,
     action: "AUTH_PASSWORD_RESET",
@@ -132,6 +143,30 @@ export const POST = handler(async ({ req, requestId }) => {
   }
   if (action === "request-reset") {
     const result = await requestPasswordReset(body);
+    return { payload: { success: true, data: result, metadata: meta(requestId) } };
+  }
+  if (action === "mfa-challenge") {
+    // Used only after an OAuth sign-in that needs a second factor: the
+    // callback delivered the challenge in an HttpOnly cookie, never in a URL.
+    const jar = await cookies();
+    const pending = jar.get("fs_oauth_challenge")?.value;
+    if (!pending) {
+      throw new ApiHttpError("NOT_FOUND", "There is no pending second-factor challenge.", false);
+    }
+    jar.delete("fs_oauth_challenge");
+    return { payload: { success: true, data: { challenge: pending }, metadata: meta(requestId) } };
+  }
+  if (action === "mfa-verify") {
+    const parsed = MfaVerifySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ApiHttpError("VALIDATION_FAILED", "A challenge and a six-digit code or a recovery code are required.", false);
+    }
+    const result = await verifyMfaChallenge({
+      challenge: parsed.data.challenge,
+      code: parsed.data.code,
+      recoveryCode: parsed.data.recoveryCode,
+      ip: clientIp(req),
+    });
     return { payload: { success: true, data: result, metadata: meta(requestId) } };
   }
   return {

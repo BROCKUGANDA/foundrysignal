@@ -75,6 +75,10 @@ const EXCLUDED_AT_RULES = [
   /@media\s*\(\s*forced-colors/i,
   /@media\s*\(\s*prefers-contrast/i,
   /@media\s*\(\s*prefers-color-scheme/i,
+  // The color-mix() fallback block re-declares tokens as rgba() for engines
+  // that cannot parse the canonical values; it is not the shipped screen
+  // theme and must not change the contrast assertions.
+  /@supports\s+not\s*\(\s*color:\s*color-mix/i,
 ];
 
 function buildScope(themeSelector) {

@@ -17,10 +17,11 @@ export async function register() {
   // Billing lifecycle: schedule the first daily sweep (expiry → PAST_DUE,
   // renewal reminders). Deferred — never blocks startup.
   try {
-    const { ensureBillingSweepScheduled } = await import("@/lib/domain/billing/lifecycle");
-    await ensureBillingSweepScheduled();
+    const lifecycle = await import("@/lib/domain/billing/lifecycle");
+    await lifecycle.ensureBillingSweepScheduled();
+    await lifecycle.ensureBillingWatcherScheduled();
   } catch (err) {
-    console.error(JSON.stringify({ level: "error", component: "instrumentation", message: `Billing sweep scheduling deferred: ${String(err)}` }));
+    console.error(JSON.stringify({ level: "error", component: "instrumentation", message: `Billing lifecycle scheduling deferred: ${String(err)}` }));
   }
 
   // Bootstrap platform governance — never throws past startup.

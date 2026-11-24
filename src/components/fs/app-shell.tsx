@@ -23,6 +23,7 @@ import {
 import { useApp, type Section } from "@/lib/client/store";
 import { api, type AccountState, type Capabilities } from "@/lib/client/api";
 import { Drawer, DrawerContent } from "@/components/fs/ui/overlay";
+import { getRoleWorkspace } from "@/lib/client/role-workspace";
 
 interface NavEntry {
   section: Section;
@@ -65,14 +66,15 @@ export function AppShell({
     staleTime: 60_000,
   });
 
-  const isAdmin =
-    account.platformRole === "PLATFORM_ADMIN" || account.platformRole === "MODERATOR";
-
-  const navEntries: NavEntry[] = [
+  const workspace = getRoleWorkspace(account);
+  const availableEntries: NavEntry[] = [
+    { section: "dashboard", label: "Workspace", glyph: "venture", hint: workspace.title },
     ...PLATFORM_NAV,
     ...ACCOUNT_NAV,
-    ...(isAdmin ? [{ section: "admin" as Section, label: "Admin", glyph: "risk" as GlyphName }] : []),
+    { section: "admin", label: "Admin", glyph: "risk" },
   ];
+  const navEntries = workspace.navigation.flatMap((target) => availableEntries.filter((entry) => entry.section === target));
+  const platformEntries = navEntries.filter((entry) => entry.section !== "settings" && entry.section !== "admin");
 
   // Mobile drawer hygiene: Escape closes, body scroll locks while open.
   React.useEffect(() => {
@@ -91,7 +93,8 @@ export function AppShell({
 
   const isActive = (entry: NavEntry) =>
     section === entry.section ||
-    (entry.section === "discover" && (section === "home" || section === "dossier"));
+    (entry.section === "dashboard" && (section === "home" || section === "auth")) ||
+    (entry.section === "discover" && section === "dossier");
 
   const go = (target: Section) => {
     navigate(target);
@@ -116,13 +119,13 @@ export function AppShell({
         </button>
         <button
           type="button"
-          onClick={() => go("discover")}
-          aria-label="FoundrySignal — go to Discover"
+          onClick={() => go("dashboard")}
+          aria-label="FoundrySignal — go to Workspace"
           className="fs-press"
         >
           <LogoCompact size={22} />
         </button>
-        <span className="fs-brand text-sm font-semibold text-ink">FoundrySignal</span>
+        <span className="fs-brand hidden text-sm font-semibold text-ink min-[380px]:inline">FoundrySignal</span>
         <div className="ml-auto flex items-center gap-1">
           <ThemeToggle size="sm" />
           <AccountButton
@@ -146,8 +149,8 @@ export function AppShell({
         <div className="fs-safe-top flex h-14 shrink-0 items-center px-4">
           <button
             type="button"
-            onClick={() => go("discover")}
-            aria-label="FoundrySignal — go to Discover"
+            onClick={() => go("dashboard")}
+            aria-label="FoundrySignal — go to Workspace"
             className="fs-press"
           >
             <LogoLockup size={24} />
@@ -273,7 +276,7 @@ export function AppShell({
         aria-label="Primary"
         className="fs-glass fs-safe-bottom fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-[var(--fs-border)] lg:hidden"
       >
-        {PLATFORM_NAV.map((entry) => {
+        {platformEntries.map((entry) => {
           const active = isActive(entry);
           return (
             <button
